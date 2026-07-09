@@ -1,0 +1,32 @@
+{
+  "streams": [
+    {
+      "index": 0,
+      "codec_name": "h264",
+      "codec_type": "video",
+      "width": 1920,
+      "height": 1080,
+      "r_frame_rate": "30000/1001",
+      "bit_rate": "5000000"
+    },
+    {
+      "index": 1,
+      "codec_name": "aac",
+      "codec_type": "audio",
+      "sample_rate": "48000",
+      "channels": 2,
+      "bit_rate": "128000",
+      "tags": { "language": "eng" }
+    },
+    {
+      "index": 2,
+      "codec_name": "subrip",
+      "codec_type": "subtitle",
+      "tags": { "language": "eng" }
+    }
+  ],
+  "format": {
+    "duration": "60.000000",
+    "bit_rate": "5200000"
+  }
+}

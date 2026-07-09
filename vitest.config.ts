@@ -10,8 +10,10 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "html", "lcov"],
       include: ["src/**/*.ts"],
-      // Barrels, type-only, and generated files carry no testable logic.
-      exclude: ["src/**/*.test.ts", "src/index.ts", "src/**/*.d.ts", "src/types/**"],
+      // Barrels and generated declarations carry no testable logic. Type-only
+      // modules (metadata/progress/ports) stay included but report as no-ops;
+      // `types/brands.ts` has real runtime constructors and IS covered.
+      exclude: ["src/**/*.test.ts", "src/index.ts", "src/**/*.d.ts"],
       thresholds: {
         lines: 90,
         branches: 90,

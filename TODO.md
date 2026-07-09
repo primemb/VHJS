@@ -33,19 +33,22 @@ A task is not done until all of these hold — no exceptions:
 > Decisions locked this phase: **MIT** license; npm name **`vhjs`**; build tool **`tsdown`** (not `tsup`).
 > Note: install must approve esbuild's build script — pnpm 11 uses `allowBuilds:` in `pnpm-workspace.yaml`.
 
-## Phase 0.5 — Ports & test harness 🔴
-- [ ] `ports/index.ts` — define interfaces: `FfmpegRunner`, `ProbeService`, `FileSystem`, `Clock`, `Logger`.
-- [ ] Author in-memory **fakes** for every port under `tests/fakes/` (fake runner records argv & emits scripted progress; fake FS is a map).
-- [ ] `tests/fixtures/` — recorded ffprobe JSON + ffmpeg stderr samples; tiny (<1s) e2e clips.
-- [ ] Establish the test pattern (arrange-act-assert, one behavior per test) as the template for all later phases.
+## Phase 0.5 — Ports & test harness 🔴 ✅
+- [x] `ports/index.ts` — interfaces `ProbeService`, `FfmpegRunner`, `FileSystem`, `Clock`, `Logger` (type-only; narrow per Interface Segregation).
+- [x] In-memory **fakes** for every port under `tests/fakes/` (+ barrel): `FakeProbeService`, `FakeFfmpegRunner` (records argv, replays scripted progress/result/error), `FakeFileSystem` (map-backed), `FakeClock`, `FakeLogger`. All exercised by `tests/fakes/fakes.test.ts`.
+- [x] `tests/fixtures/` — recorded ffprobe JSON (`1080p-h264-aac-subs.json`, `no-bitrate.json`), an ffmpeg progress-stderr sample (for Phase 3), and a `makeSourceMetadata(overrides)` factory. (Tiny e2e clips land with the Phase 3 e2e suite.)
+- [x] Test pattern established (arrange-act-assert, one behavior per test, `it.each` for tables, injected fakes — no live FFmpeg).
 
-## Phase 1 — FFmpeg/ffprobe foundation (adapters) 🔴
+## Phase 1 — FFmpeg/ffprobe foundation (adapters) 🔴 ✅
 > These are **adapters** implementing the `ports/` interfaces from Phase 0.5. Only this layer touches `node:child_process`/`node:fs`.
-- [ ] `core/binaries.ts` — resolve ffmpeg & ffprobe from PATH or user override; throw `FfmpegNotFoundError`/`FfprobeNotFoundError` if missing; cache resolution.
-- [ ] `core/process.ts` — spawn wrapper: stdout/stderr capture, exit-code handling, `AbortSignal` cancellation, timeout.
-- [ ] `core/ffprobe.ts` — implements `ProbeService`: probe input → `SourceMetadata` (streams, codecs, width/height, bitrate, fps, duration, audio channels/lang, subtitle streams). Pure JSON→metadata parsing split out so it's testable without spawning.
-- [ ] `types/metadata.ts`, `types/brands.ts` — `SourceMetadata`, `Rendition`, branded `Resolution`/`Bitrate`.
-- [ ] Unit tests with recorded ffprobe JSON fixtures (no live FFmpeg needed).
+- [x] `core/binaries.ts` — resolve ffmpeg & ffprobe from PATH or override; pure `*Candidate` decision fns + injected `VerifyBinary`; throws `FfmpegNotFoundError`/`FfprobeNotFoundError`; memoizing `createBinaryResolver` caches resolution; `createBinaryVerifier` builds the real `<cmd> -version` check over a `ProcessRunner`.
+- [x] `core/process.ts` — promise `ProcessRunner` over injectable `spawn`: stdout/stderr capture, exit-code handling, `AbortSignal` cancellation, `timeoutMs`. Non-zero exit resolves (inspect `exitCode`); only spawn failure/abort rejects.
+- [x] `core/ffprobe.ts` — implements `ProbeService`. Pure `parseProbeOutput` (raw JSON → `SourceMetadata`, tested via fixtures) split from `createFfprobeService` (I/O). Maps video/audio/subtitle streams, codecs, w/h, bitrate, fps, duration, channels/sample-rate/lang; ignores unmodelled stream kinds; typed `ProbeError` on bad exit/JSON/spawn.
+- [x] `types/metadata.ts` (`SourceMetadata` + stream types), `types/brands.ts` (branded `Bitrate`/`Pixels`/`FrameRate`/`Milliseconds` + validating constructors), `types/progress.ts` (`ProgressEvent`). *(`Rendition` type lands with the ladder in Phase 3.)*
+- [x] Unit tests with recorded ffprobe JSON fixtures — no live FFmpeg. (One tiny `node --version` run covers the default spawn path in `core/process`.)
+
+> Also landed early (needed by the adapters): a Phase-1 subset of `validation/errors.ts` — base `VhjsError` (discriminant `code`) + `FfmpegNotFoundError`/`FfprobeNotFoundError`/`ProbeError`. The rest of the error hierarchy + rules land in **Phase 2**.
+> Public barrel (`index.ts`) now re-exports the typed errors, metadata/progress types, and branded types + constructors. Coverage: 100% lines/functions, 98% branches (≥90% gate).
 
 ## Phase 2 — Validation layer 🔴
 - [ ] `validation/errors.ts` — base `VhjsError` + discriminated `code`; all error subclasses from `CLAUDE.md`.

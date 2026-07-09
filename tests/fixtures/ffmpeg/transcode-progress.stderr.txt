@@ -1,0 +1,12 @@
+ffmpeg version 7.1 Copyright (c) 2000-2024 the FFmpeg developers
+  built with gcc 14
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'input.mp4':
+  Duration: 00:01:00.00, start: 0.000000, bitrate: 5200 kb/s
+Stream mapping:
+  Stream #0:0 -> #0:0 (h264 (native) -> h264 (libx264))
+  Stream #0:1 -> #0:1 (aac (native) -> aac (native))
+frame=  120 fps= 60 q=28.0 size=    1024kB time=00:00:04.00 bitrate=2097.2kbits/s speed=2.0x
+frame=  240 fps= 60 q=28.0 size=    2048kB time=00:00:08.00 bitrate=2097.2kbits/s speed=2.0x
+frame=  360 fps= 59 q=28.0 size=    3072kB time=00:00:12.00 bitrate=2097.2kbits/s speed=1.97x
+frame= 1800 fps= 60 q=-1.0 Lsize=   15360kB time=00:01:00.00 bitrate=2097.2kbits/s speed=2.0x
+video:14000kB audio:1200kB subtitle:0kB other streams:0kB global headers:0kB

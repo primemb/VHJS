@@ -270,8 +270,25 @@ it. The decision goes in the domain (pure, tested); the I/O goes in an adapter.
 
 ## Status
 
-**Phase 0 complete** — toolchain, tsconfig(s), lint/format + architecture guard,
-coverage gate, CI matrix, MIT license, git repo, and the `examples/` dev sandbox
-are all in place and green (`typecheck` / `lint` / `test` / `build` / `example`).
-No domain code yet. Next: **Phase 0.5** (define `ports/` interfaces + in-memory
-fakes + fixtures harness). See `TODO.md` for the full build order.
+**Phases 0, 0.5 & 1 complete** — on top of the Phase 0 toolchain:
+
+- **Ports** (`ports/index.ts`): `ProbeService`, `FfmpegRunner`, `FileSystem`,
+  `Clock`, `Logger` — narrow, type-only interfaces. In-memory **fakes** for all
+  five live under `tests/fakes/`; fixtures (recorded ffprobe JSON, ffmpeg stderr
+  sample, `makeSourceMetadata` factory) under `tests/fixtures/`.
+- **Domain types**: `types/brands.ts` (branded `Bitrate`/`Pixels`/`FrameRate`/
+  `Milliseconds` + validating constructors), `types/metadata.ts`
+  (`SourceMetadata` + stream types), `types/progress.ts` (`ProgressEvent`).
+- **Adapters** (`core/`, the only layer touching `child_process`):
+  `process.ts` (promise spawn wrapper — capture/exit/abort/timeout, injectable
+  `spawn`), `binaries.ts` (PATH+override resolve, memoized, typed not-found
+  errors), `ffprobe.ts` (`ProbeService` impl; **pure** `parseProbeOutput` split
+  from I/O).
+- **Errors**: Phase-1 subset of `validation/errors.ts` — base `VhjsError` +
+  `FfmpegNotFoundError`/`FfprobeNotFoundError`/`ProbeError`.
+
+All green: `typecheck` / `lint` / `test:cov` (70 tests, 100% lines, 98% branch) /
+`build` (`.mjs` + `.d.mts`) / `example`. **No live FFmpeg in the suite.**
+
+Next: **Phase 2** — the validation layer (`validation/rules.ts` + the remaining
+typed errors: upscale, bitrate-exceeds-source, unsupported-codec). See `TODO.md`.
