@@ -16,6 +16,7 @@
  * Inner layer: imports `types/` + `validation/errors` only — never `core/`.
  */
 import type { Bitrate } from "../types/brands.js";
+import type { BitratePolicy } from "../types/config.js";
 import type { SourceMetadata, VideoStream } from "../types/metadata.js";
 import { displayDimensions } from "../types/orientation.js";
 import {
@@ -30,15 +31,7 @@ import {
   UnsupportedCodecError,
 } from "./errors.js";
 
-/** Tunable thresholds for the bitrate clamp-and-warn policy. */
-export interface BitratePolicy {
-  /**
-   * A request above `source × hardExceedFactor` is a hard error; between the
-   * source and this ceiling it is clamped down to the source and warned. Must be
-   * `>= 1`.
-   */
-  readonly hardExceedFactor: number;
-}
+export type { BitratePolicy } from "../types/config.js";
 
 /** Default policy: tolerate up to 1.5× the source before erroring. */
 export const DEFAULT_BITRATE_POLICY: BitratePolicy = { hardExceedFactor: 1.5 };

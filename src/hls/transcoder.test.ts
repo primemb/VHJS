@@ -95,6 +95,31 @@ describe("createTranscoder — real run", () => {
     expect(result.renditions.map((r) => r.name)).toEqual(["1080p", "720p", "480p", "360p", "240p"]);
   });
 
+  it("accepts the Phase-4 explicit ladder configuration", async () => {
+    const { deps } = setup();
+    const rendition = makeRendition({ height: asPixels(720), videoBitrate: asBitrate(2_800_000) });
+    const result = await createTranscoder(deps).transcodeToHls({
+      input: "in.mp4",
+      outputDir: "out",
+      ladder: { mode: "explicit", renditions: [rendition] },
+    });
+
+    if (isDryRun(result)) throw new Error("expected a real run");
+    expect(result.renditions.map((output) => output.name)).toEqual(["720p"]);
+  });
+
+  it("rejects an explicit configuration with no renditions", async () => {
+    const { deps } = setup();
+
+    await expect(
+      createTranscoder(deps).transcodeToHls({
+        input: "in.mp4",
+        outputDir: "out",
+        ladder: { mode: "explicit", renditions: [] },
+      }),
+    ).rejects.toMatchObject({ code: "PROBE_FAILED" });
+  });
+
   it("passes a keyframe interval derived from the source frame rate", async () => {
     const { deps, ffmpeg } = setup(); // 30 fps source
     await createTranscoder(deps).transcodeToHls({

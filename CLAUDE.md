@@ -303,7 +303,7 @@ The standing checklist of real-world input concerns (extend as you find more):
 
 ## Status
 
-**Phases 0 – 3 complete.** VHJS transcodes video to adaptive-bitrate HLS
+**Phases 0 – 4 complete.** VHJS transcodes video to adaptive-bitrate HLS
 end-to-end, verified on real FFmpeg (8.1.2). Highlights on top of the Phase 0–1
 foundation (ports + fakes, branded types, `process`/`binaries`/`ffprobe`
 adapters):
@@ -323,9 +323,10 @@ adapters):
 - **Adapters** (`core/`): `ffmpeg.ts` (`FfmpegRunner`, streams progress, bounded
   stderr tail), `progress.ts` (stderr → `ProgressEvent`), `fs.ts`, `clock.ts`.
 - **Composition root** (`composition.ts`): `createVhjs(options)` factory resolves
-  the binaries **once** and returns `{ probe, transcodeToHls }` (memoized) so
-  callers don't re-pass options per call; thin `probe()`/`transcodeToHls()`
-  one-shot wrappers remain. Re-exported from `index.ts`.
+  the binaries **once** and returns `{ probe, transcodeToHls,
+  startTranscodeToHls }` (memoized) so callers don't re-pass options per call;
+  thin `probe()`/`transcodeToHls()`/`startTranscodeToHls()` one-shot wrappers
+  remain. Re-exported from `index.ts`.
 - **Custom ffmpeg args** (early Phase-4 DX): `inputArgs`/`outputArgs` on a
   transcode request are injected verbatim (before `-i` / before the HLS muxer);
   a flag VHJS already manages is rejected up front with
@@ -335,18 +336,22 @@ adapters):
   drives the ladder + upscale check off *display* dimensions. Pixels are rotated
   by ffmpeg's own default autorotation (no manual `transpose` — that would
   double-rotate); a real-FFmpeg e2e asserts a rotated source encodes portrait.
+- **Public API & DX** (Phase 4): `types/config.ts` provides a discriminated
+  `HlsJobConfig` (`ladder.mode: "auto" | "explicit"`) with compatibility for the
+  original `renditions` request. `vhjs(input).output(dir)...run()` is an
+  immutable fluent builder. `TranscodeJob` provides `EventEmitter` progress and
+  `AsyncIterable` progress (`for await`), with the existing callback preserved.
 
 > Note: the arg-builder lives in `hls/command.ts` (a pure *decision*), not
 > `core/ffmpeg.ts`, per the mandatory "decision in the domain, I/O in an adapter"
 > rule — so the inner layer never imports `core/`. `core/ffmpeg.ts` is now just
 > the runner. This refines the target-layout table above.
 
-All green: `typecheck` / `lint` / `test:cov` (**168 unit tests, 99.7% lines,
-95.5% branch**, no live FFmpeg) / `build` (`.mjs` + `.d.mts`) / `example` (probe,
-basic-hls, abr-ladder, dry-run) / **`test:e2e`** (real FFmpeg 8.1.2: base
+All green: `typecheck` / `lint` / `test:cov` (**181 unit tests, 100% lines/
+functions, 96.18% branch**, no live FFmpeg) / `build` (`.mjs` + `.d.mts`) / `example` (probe,
+basic-hls, abr-ladder, progress-events, dry-run) / **`test:e2e`** (real FFmpeg 8.1.2: base
 transcode, rotated-source-stays-portrait, upscale-rejected; self-skips when
 absent). FFmpeg resolves from PATH or `VHJS_FFMPEG_PATH` / `VHJS_FFPROBE_PATH`.
 
-Next: **Phase 4** — public API & DX (`types/config.ts` discriminated-union
-`HlsJobConfig`, fluent `builder/job-builder.ts`, `EventEmitter` + `AsyncIterable`
-progress). See `TODO.md`.
+Next: **Phase 4.5** — real-world input robustness (VFR, HDR/10-bit, and
+anamorphic inputs). See `TODO.md`.

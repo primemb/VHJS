@@ -11,6 +11,9 @@
  * the examples and the opt-in e2e suite rather than by unit tests — like the
  * public barrel, it is excluded from the coverage gate.
  */
+
+import { createHlsJobBuilder, type HlsJobBuilderStart } from "./builder/job-builder.js";
+import { startTranscodeJob, type TranscodeJob } from "./builder/transcode-job.js";
 import { createBinaryResolver, createBinaryVerifier } from "./core/binaries.js";
 import { systemClock } from "./core/clock.js";
 import { createFfmpegRunner } from "./core/ffmpeg.js";
@@ -42,6 +45,8 @@ export interface Vhjs {
   probe(input: string, signal?: AbortSignal): Promise<SourceMetadata>;
   /** Transcode a source file into an HLS package (or dry-run the command). */
   transcodeToHls(request: TranscodeRequest): Promise<TranscodeOutcome>;
+  /** Start a job with EventEmitter and AsyncIterable progress delivery. */
+  startTranscodeToHls(request: TranscodeRequest): TranscodeJob;
 }
 
 /** Build the `BinaryOverrides` object, omitting undefined keys. */
@@ -95,6 +100,17 @@ export function createVhjs(options: VhjsOptions = {}): Vhjs {
       const { transcoder } = await services();
       return transcoder.transcodeToHls(request);
     },
+    startTranscodeToHls(request) {
+      return startTranscodeJob(
+        {
+          transcodeToHls: async (jobRequest) => {
+            const { transcoder } = await services();
+            return transcoder.transcodeToHls(jobRequest);
+          },
+        },
+        request,
+      );
+    },
   };
 }
 
@@ -117,4 +133,23 @@ export function transcodeToHls(
   options: VhjsOptions = {},
 ): Promise<TranscodeOutcome> {
   return createVhjs(options).transcodeToHls(request);
+}
+
+/**
+ * One-shot streaming transcode. The returned job is both an `EventEmitter` and
+ * an `AsyncIterable`; await `job.result` for the final outcome.
+ */
+export function startTranscodeToHls(
+  request: TranscodeRequest,
+  options: VhjsOptions = {},
+): TranscodeJob {
+  return createVhjs(options).startTranscodeToHls(request);
+}
+
+/**
+ * Begin the optional fluent API:
+ * `vhjs("input.mp4").output("hls").rendition(rendition).run()`.
+ */
+export function vhjs(input: string, options: VhjsOptions = {}): HlsJobBuilderStart {
+  return createHlsJobBuilder(input, createVhjs(options));
 }

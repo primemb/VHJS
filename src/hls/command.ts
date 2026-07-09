@@ -30,13 +30,15 @@
  *
  * Inner layer: imports `types/` only, never `core/`.
  */
+
+import { DEFAULT_HLS_JOB_OPTIONS } from "../types/config.js";
 import { type Rendition, renditionName } from "../types/rendition.js";
 import { ConflictingFfmpegArgError } from "../validation/errors.js";
 
 /** HLS build defaults (overridable per job). */
-export const DEFAULT_SEGMENT_DURATION_SEC = 6;
-export const DEFAULT_MASTER_PLAYLIST_NAME = "master.m3u8";
-export const DEFAULT_PRESET = "veryfast";
+export const DEFAULT_SEGMENT_DURATION_SEC = DEFAULT_HLS_JOB_OPTIONS.segmentDuration;
+export const DEFAULT_MASTER_PLAYLIST_NAME = DEFAULT_HLS_JOB_OPTIONS.masterPlaylistName;
+export const DEFAULT_PRESET = DEFAULT_HLS_JOB_OPTIONS.preset;
 
 /** Encoder names for the supported output codecs. */
 const VIDEO_ENCODER = "libx264";

@@ -14,12 +14,11 @@
  * root (`src/composition.ts`).
  */
 import type { Clock, FfmpegRunner, FileSystem, Logger, ProbeService } from "../ports/index.js";
+import type { TranscodeRequest } from "../types/config.js";
 import type { SourceMetadata } from "../types/metadata.js";
-import type { ProgressEvent } from "../types/progress.js";
 import type { Rendition, RenditionOutput, TranscodeResult } from "../types/rendition.js";
 import type { ValidationWarning } from "../types/warnings.js";
 import { ProbeError, TranscodeError } from "../validation/errors.js";
-import type { BitratePolicy } from "../validation/rules.js";
 import { buildHlsCommand, DEFAULT_SEGMENT_DURATION_SEC, type HlsBuildOptions } from "./command.js";
 import { autoLadder, normalizeLadder } from "./ladder.js";
 
@@ -32,25 +31,7 @@ export interface TranscoderDeps {
   readonly logger?: Logger;
 }
 
-/** A transcode request. Omit `renditions` to auto-derive a ladder from the source. */
-export interface TranscodeRequest {
-  readonly input: string;
-  readonly outputDir: string;
-  /** Explicit ABR ladder; when omitted/empty, one is derived from the source. */
-  readonly renditions?: readonly Rendition[];
-  readonly segmentDuration?: number;
-  readonly masterPlaylistName?: string;
-  readonly preset?: string;
-  readonly bitratePolicy?: BitratePolicy;
-  /** Extra ffmpeg args before `-i` (global/input, e.g. `-hwaccel`). Additive only. */
-  readonly inputArgs?: readonly string[];
-  /** Extra ffmpeg args before the HLS muxer (per-output, e.g. `-tune`, `-crf`). Additive only. */
-  readonly outputArgs?: readonly string[];
-  /** When true, build and return the argv without creating dirs or running ffmpeg. */
-  readonly dryRun?: boolean;
-  readonly signal?: AbortSignal;
-  readonly onProgress?: (event: ProgressEvent) => void;
-}
+export type { TranscodeRequest } from "../types/config.js";
 
 /** The result of a `dryRun` request: the exact command, without side effects. */
 export interface DryRunResult {
@@ -86,10 +67,7 @@ export function createTranscoder(deps: TranscoderDeps): Transcoder {
       const source = await deps.probe.probe(request.input, request.signal);
 
       // 3. Validate + normalize the ladder (throws typed errors on hard failures).
-      const requested =
-        request.renditions && request.renditions.length > 0
-          ? request.renditions
-          : autoLadder(source);
+      const requested = requestedLadder(request, source);
       const { renditions, warnings } = normalizeLadder(requested, source, request.bitratePolicy);
       if (renditions.length === 0) {
         throw new ProbeError("No renditions to encode after normalization.");
@@ -155,6 +133,17 @@ export function createTranscoder(deps: TranscoderDeps): Transcoder {
       };
     },
   };
+}
+
+/** Resolve either the Phase-4 discriminated config or the compatible Phase-3 shape. */
+function requestedLadder(request: TranscodeRequest, source: SourceMetadata): readonly Rendition[] {
+  if (request.ladder?.mode === "explicit") {
+    return request.ladder.renditions;
+  }
+  if ("renditions" in request && request.renditions && request.renditions.length > 0) {
+    return request.renditions;
+  }
+  return autoLadder(source);
 }
 
 /** The source frame rate, used to align the keyframe interval to segments. */

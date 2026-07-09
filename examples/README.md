@@ -41,6 +41,7 @@ ffmpeg -version                   # examples need FFmpeg + ffprobe
 pnpm example 01-probe             # probe the bundled clip, print SourceMetadata
 pnpm example 02-basic-hls         # single 720p rendition
 pnpm example 03-abr-ladder        # auto ABR ladder + live progress
+pnpm example 07-progress-events   # EventEmitter + AsyncIterable progress
 pnpm example 08-dry-run           # print the ffmpeg argv without running it
 ```
 
@@ -66,6 +67,22 @@ await vhjs.transcodeToHls({ input: "in.mp4", outputDir: "out" });
 // One-shot convenience (options per call) — fine for a single call.
 await probe("in.mp4", { ffmpegPath: "/opt/ffmpeg" });
 await transcodeToHls({ input: "in.mp4", outputDir: "out" });
+```
+
+## Fluent jobs and streaming progress
+
+```ts
+import { createVhjs, vhjs } from "vhjs";
+
+// Optional fluent builder. With no `.rendition()`, VHJS auto-derives the ladder.
+await vhjs("in.mp4").output("out").run();
+
+// A started job provides both standard Node events and async iteration.
+const client = createVhjs();
+const job = client.startTranscodeToHls({ input: "in.mp4", outputDir: "out" });
+job.on("progress", (event) => console.log(event.percent));
+for await (const event of job) console.log(event.speed);
+await job.result;
 ```
 
 ## Custom ffmpeg options

@@ -72,16 +72,16 @@ A task is not done until all of these hold — no exceptions:
 - [x] E2E test (`tests/e2e/transcode.e2e.test.ts`, own `vitest.e2e.config.ts`, `pnpm test:e2e`): transcodes the bundled clip on **real FFmpeg**, asserts master + media playlists + segments exist and parse; self-skips when FFmpeg isn't resolvable. Verified green locally (FFmpeg 8.1.2).
 - [x] Examples: `01-probe`, `02-basic-hls`, `03-abr-ladder` (live progress), `08-dry-run` — all run against the bundled clip; binaries via PATH or `VHJS_FFMPEG_PATH`/`VHJS_FFPROBE_PATH`.
 
-## Phase 4 — Public API & DX 🔴
+## Phase 4 — Public API & DX 🔴 ✅
 > Landed early (during Phase 3 follow-up): `createVhjs(options)` **instance API**
 > (binaries resolved once, memoized; `{ probe, transcodeToHls }` reused without
 > re-passing options) + one-shot `probe`/`transcodeToHls` wrappers; **custom
 > ffmpeg args** (`inputArgs`/`outputArgs`, additive-only, `ConflictingFfmpegArgError`
 > on collision with managed flags); **`AbortSignal`** wired end-to-end.
-- [ ] `types/config.ts` — `HlsJobConfig` as discriminated unions; sensible defaults.
-- [~] `index.ts` — clean public surface: `createVhjs`/`transcodeToHls`/`probe` done; progress is a callback today — **still TODO:** event/`AsyncIterable` progress.
-- [ ] `builder/job-builder.ts` — optional fluent builder (`vhjs(input).output(dir).rendition(...).run()`).
-- [ ] Progress delivery: both `EventEmitter` and `AsyncIterable` (framework-neutral). *(callback `onProgress` exists.)*
+- [x] `types/config.ts` — `HlsJobConfig` as discriminated unions; sensible defaults.
+- [x] `index.ts` — clean public surface: `createVhjs`/`transcodeToHls`/`probe` plus `startTranscodeToHls` and `vhjs` fluent entry points.
+- [x] `builder/job-builder.ts` — optional fluent builder (`vhjs(input).output(dir).rendition(...).run()`).
+- [x] Progress delivery: both `EventEmitter` and `AsyncIterable` through `TranscodeJob`. *(callback `onProgress` remains supported.)*
 - [x] Cancellation via `AbortSignal` end-to-end.
 
 ## Phase 4.5 — Real-world input robustness 🟡

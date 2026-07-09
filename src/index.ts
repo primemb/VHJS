@@ -8,8 +8,24 @@
  */
 export const VHJS_VERSION = "0.1.0";
 
+// --- Fluent builder + streaming job ---
+export {
+  createHlsJobBuilder,
+  type HlsJobBuilder,
+  type HlsJobBuilderStart,
+  type HlsJobClient,
+} from "./builder/job-builder.js";
+export { startTranscodeJob, TranscodeJob } from "./builder/transcode-job.js";
 // --- Composed entry points (composition root) ---
-export { createVhjs, probe, transcodeToHls, type Vhjs, type VhjsOptions } from "./composition.js";
+export {
+  createVhjs,
+  probe,
+  startTranscodeToHls,
+  transcodeToHls,
+  type Vhjs,
+  type VhjsOptions,
+  vhjs,
+} from "./composition.js";
 export {
   buildHlsCommand,
   DEFAULT_MASTER_PLAYLIST_NAME,
@@ -34,6 +50,18 @@ export {
 // --- Branded scalars ---
 export type { Bitrate, Brand, FrameRate, Milliseconds, Pixels } from "./types/brands.js";
 export { asBitrate, asFrameRate, asMilliseconds, asPixels } from "./types/brands.js";
+export {
+  type AutoHlsJobConfig,
+  type AutoLadderConfig,
+  type BitratePolicy,
+  DEFAULT_HLS_JOB_OPTIONS,
+  type ExplicitHlsJobConfig,
+  type ExplicitLadderConfig,
+  type HlsJobConfig,
+  type HlsJobOptions,
+  type HlsLadderConfig,
+  type LegacyHlsJobRequest,
+} from "./types/config.js";
 // --- Domain types ---
 export type {
   AudioStream,
@@ -74,7 +102,6 @@ export {
 } from "./validation/errors.js";
 // --- Validation ---
 export {
-  type BitratePolicy,
   clampBitrate,
   DEFAULT_BITRATE_POLICY,
   validateRendition,
