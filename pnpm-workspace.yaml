@@ -1,0 +1,5 @@
+# pnpm 11 reads project settings from here (no longer the "pnpm" key in package.json).
+# esbuild ships a native binary via a postinstall script (used by tsup + tsx + vitest);
+# approve it to run so the toolchain works.
+allowBuilds:
+  esbuild: true

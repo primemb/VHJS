@@ -1,0 +1,65 @@
+{
+  "name": "vhjs",
+  "version": "0.1.0",
+  "description": "TypeScript-first, framework-agnostic library that turns any video into adaptive-bitrate HLS on top of FFmpeg — probe-first, fail-typed.",
+  "keywords": [
+    "hls",
+    "ffmpeg",
+    "video",
+    "transcode",
+    "adaptive-bitrate",
+    "abr",
+    "m3u8",
+    "streaming",
+    "typescript"
+  ],
+  "license": "MIT",
+  "author": "",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "^11.10.0",
+      "onFail": "download"
+    }
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    }
+  },
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:cov": "vitest run --coverage",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "docs": "typedoc",
+    "example": "tsx examples/_runner.ts",
+    "prepublishOnly": "pnpm run build"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.3",
+    "@types/node": "^26.1.1",
+    "@vitest/coverage-v8": "^4.1.10",
+    "tsdown": "^0.22.4",
+    "tsx": "^4.23.0",
+    "typedoc": "^0.28.20",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.10"
+  }
+}

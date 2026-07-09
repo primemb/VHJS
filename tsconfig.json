@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    /* Language & module — ESM on modern Node (see .nvmrc / CLAUDE.md). */
+    "target": "ES2023",
+    "lib": ["ES2023"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+
+    /* Strictness — every guard on; illegal states should not typecheck. */
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "exactOptionalPropertyTypes": true,
+    "verbatimModuleSyntax": true,
+
+    /* Emit — tsup handles the real build; tsc is used for typechecking only. */
+    "noEmit": true,
+    "declaration": true,
+    "sourceMap": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+
+    /* Dev-only: let examples import the package by name, resolved to source
+       (paths are relative to this config file in TS 5+; no baseUrl needed).
+       Not used by the published build (tsup emits real paths into dist/). */
+    "paths": {
+      "vhjs": ["./src/index.ts"]
+    }
+  },
+  "include": ["src", "tests", "examples", "*.config.ts"],
+  "exclude": ["dist", "node_modules"]
+}

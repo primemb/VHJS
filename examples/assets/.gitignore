@@ -1,0 +1,5 @@
+# Ignore large / generated media by default; track only small committed fixtures explicitly.
+*
+!.gitignore
+!README.md
+# To commit a small sample fixture, force-add it: git add -f examples/assets/sample.mp4
