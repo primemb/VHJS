@@ -303,8 +303,9 @@ The standing checklist of real-world input concerns (extend as you find more):
 
 ## Status
 
-**Phases 0 – 4 complete.** VHJS transcodes video to adaptive-bitrate HLS
-end-to-end, verified on real FFmpeg (8.1.2). Highlights on top of the Phase 0–1
+**Phases 0 – 5 complete.** VHJS transcodes video to adaptive-bitrate HLS
+end-to-end and now handles audio features (extract/demux + alternate-audio
+packaging), verified on real FFmpeg (8.1.2). Highlights on top of the Phase 0–1
 foundation (ports + fakes, branded types, `process`/`binaries`/`ffprobe`
 adapters):
 
@@ -341,17 +342,40 @@ adapters):
   original `renditions` request. `vhjs(input).output(dir)...run()` is an
   immutable fluent builder. `TranscodeJob` provides `EventEmitter` progress and
   `AsyncIterable` progress (`for await`), with the existing callback preserved.
+- **Audio features** (Phase 5): `hls/audio.ts` — pure `buildAudioExtractCommand`
+  (standalone-file demux, explicit `copy`|`aac` modes) + `buildAudioHlsCommand`
+  (audio-only HLS rendition), plus the `extractAudio` / `addAudioTrack` use cases
+  over injected ports. `addAudioTrack` segments an external audio file into its
+  own media playlist and patches the master with an `EXT-X-MEDIA:TYPE=AUDIO`
+  rendition referenced from every variant — reusing a `groupId` builds a
+  multi-language group. Typed `NoAudioTrackError`; duration-sync
+  (`AUDIO_DURATION_MISMATCH`) and `MUXED_AUDIO_PRESENT` warnings on the side
+  channel. **Muxed-audio caveat:** VHJS base packages mux AAC into each variant;
+  adding an alternate group over them is spec-legal but a clean alternate-audio
+  setup uses video-only variants (surfaced via the warning; demux-restructuring
+  is deferred).
+- **Playlist** (`hls/playlist.ts`, pure — *pulled forward from Phase 7*): master
+  `.m3u8` `parseMasterPlaylist`/`serializeMasterPlaylist` (attribute values kept
+  verbatim for loss-free round-trip), `addAlternateAudio` patch (preserves
+  existing renditions, bumps `EXT-X-VERSION` ≥ 4), and `sumMediaPlaylistDurationMs`
+  (`#EXTINF` summer). Malformed input → `PlaylistParseError`.
 
 > Note: the arg-builder lives in `hls/command.ts` (a pure *decision*), not
 > `core/ffmpeg.ts`, per the mandatory "decision in the domain, I/O in an adapter"
 > rule — so the inner layer never imports `core/`. `core/ffmpeg.ts` is now just
 > the runner. This refines the target-layout table above.
 
-All green: `typecheck` / `lint` / `test:cov` (**181 unit tests, 100% lines/
-functions, 96.18% branch**, no live FFmpeg) / `build` (`.mjs` + `.d.mts`) / `example` (probe,
-basic-hls, abr-ladder, progress-events, dry-run) / **`test:e2e`** (real FFmpeg 8.1.2: base
-transcode, rotated-source-stays-portrait, upscale-rejected; self-skips when
-absent). FFmpeg resolves from PATH or `VHJS_FFMPEG_PATH` / `VHJS_FFPROBE_PATH`.
+All green: `typecheck` / `lint` / `test:cov` (**234 unit tests, 100% lines/
+functions, 94.14% branch**, no live FFmpeg) / `build` (`.mjs` + `.d.mts`) / `example`
+(probe, basic-hls, abr-ladder, progress-events, dry-run, **extract-audio**,
+**add-audio-track**) / **`test:e2e`** (real FFmpeg 8.1.2: base transcode,
+rotated-source-stays-portrait, upscale-rejected, robustness set, **audio
+extract copy/aac + alternate-audio add**; self-skips when absent). FFmpeg
+resolves from PATH or `VHJS_FFMPEG_PATH` / `VHJS_FFPROBE_PATH`.
 
-Next: **Phase 4.5** — real-world input robustness (VFR, HDR/10-bit, and
-anamorphic inputs). See `TODO.md`.
+> Audio examples need an input **with** an audio track (the bundled `1min.mp4` is
+> audio-less); `examples/_env.ts` `audioSampleInput()` defaults to `mobile.mkv`,
+> overridable via `VHJS_SAMPLE_AUDIO`.
+
+Next: **Phase 6** — subtitle features (WebVTT `EXT-X-MEDIA` renditions), then the
+rest of **Phase 7** (media-playlist parsing). See `TODO.md`.

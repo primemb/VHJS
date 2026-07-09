@@ -9,7 +9,16 @@
  */
 
 /** Machine-readable discriminant for a `ValidationWarning`. */
-export type ValidationWarningCode = "BITRATE_CLAMPED" | "REDUNDANT_RENDITION";
+export type ValidationWarningCode =
+  | "BITRATE_CLAMPED"
+  | "REDUNDANT_RENDITION"
+  /** An added audio track's duration differs from the video's beyond tolerance. */
+  | "AUDIO_DURATION_MISMATCH"
+  /**
+   * An alternate-audio group was added to a package whose variants still carry
+   * muxed audio; spec-legal, but the cleanest setup uses video-only variants.
+   */
+  | "MUXED_AUDIO_PRESENT";
 
 /** A non-fatal advisory produced while validating/normalizing a request. */
 export interface ValidationWarning {

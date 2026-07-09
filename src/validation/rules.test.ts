@@ -11,7 +11,9 @@ import {
 import {
   assertNoUpscale,
   assertSupportedCodecs,
+  checkAudioDurationMatch,
   clampBitrate,
+  DEFAULT_AUDIO_DURATION_TOLERANCE_MS,
   DEFAULT_BITRATE_POLICY,
   primaryVideoStream,
   validateRendition,
@@ -177,5 +179,31 @@ describe("validateRendition", () => {
 
   it("exposes the default policy factor", () => {
     expect(DEFAULT_BITRATE_POLICY.hardExceedFactor).toBe(1.5);
+  });
+});
+
+describe("checkAudioDurationMatch", () => {
+  it("returns null when the durations agree within tolerance", () => {
+    expect(checkAudioDurationMatch(10_000, 10_500)).toBeNull();
+  });
+
+  it("returns an AUDIO_DURATION_MISMATCH warning beyond tolerance", () => {
+    const warning = checkAudioDurationMatch(10_000, 60_000);
+    expect(warning?.code).toBe("AUDIO_DURATION_MISMATCH");
+    expect(warning?.message).toContain("differs");
+  });
+
+  it("returns null when either duration is unknown", () => {
+    expect(checkAudioDurationMatch(null, 10_000)).toBeNull();
+    expect(checkAudioDurationMatch(10_000, null)).toBeNull();
+  });
+
+  it("honours a custom tolerance", () => {
+    expect(checkAudioDurationMatch(10_000, 13_000, 5_000)).toBeNull();
+    expect(checkAudioDurationMatch(10_000, 13_000, 1_000)?.code).toBe("AUDIO_DURATION_MISMATCH");
+  });
+
+  it("exposes a default tolerance of 2s", () => {
+    expect(DEFAULT_AUDIO_DURATION_TOLERANCE_MS).toBe(2_000);
   });
 });

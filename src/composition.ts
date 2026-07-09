@@ -20,6 +20,7 @@ import { createFfmpegRunner } from "./core/ffmpeg.js";
 import { createFfprobeService } from "./core/ffprobe.js";
 import { createNodeFileSystem } from "./core/fs.js";
 import { createProcessRunner } from "./core/process.js";
+import { type AudioTools, createAudioTools } from "./hls/audio.js";
 import {
   createTranscoder,
   type TranscodeOutcome,
@@ -27,6 +28,13 @@ import {
   type Transcoder,
 } from "./hls/transcoder.js";
 import type { Logger, ProbeService } from "./ports/index.js";
+import type {
+  AddAudioTrackRequest,
+  AddAudioTrackResult,
+  AudioDryRunResult,
+  ExtractAudioRequest,
+  ExtractAudioResult,
+} from "./types/audio.js";
 import type { SourceMetadata } from "./types/metadata.js";
 
 /** Options common to the composed entry points. */
@@ -47,6 +55,10 @@ export interface Vhjs {
   transcodeToHls(request: TranscodeRequest): Promise<TranscodeOutcome>;
   /** Start a job with EventEmitter and AsyncIterable progress delivery. */
   startTranscodeToHls(request: TranscodeRequest): TranscodeJob;
+  /** Extract/demux one audio track from a video into a standalone file. */
+  extractAudio(request: ExtractAudioRequest): Promise<ExtractAudioResult | AudioDryRunResult>;
+  /** Add an alternate-audio rendition to an existing HLS package. */
+  addAudioTrack(request: AddAudioTrackRequest): Promise<AddAudioTrackResult | AudioDryRunResult>;
 }
 
 /** Build the `BinaryOverrides` object, omitting undefined keys. */
@@ -73,20 +85,26 @@ export function createVhjs(options: VhjsOptions = {}): Vhjs {
   const run = createProcessRunner();
   const resolveBinaries = createBinaryResolver(createBinaryVerifier(run), overrides(options));
 
-  // Build the probe service + transcoder once, after the first binary resolve.
-  let servicesPromise: Promise<{ probe: ProbeService; transcoder: Transcoder }> | undefined;
-  const services = (): Promise<{ probe: ProbeService; transcoder: Transcoder }> => {
+  // Build the probe service + transcoder + audio tools once, after the first
+  // binary resolve. They share the same adapters (ffmpeg runner, fs, clock).
+  type Services = { probe: ProbeService; transcoder: Transcoder; audio: AudioTools };
+  let servicesPromise: Promise<Services> | undefined;
+  const services = (): Promise<Services> => {
     servicesPromise ??= (async () => {
       const { ffmpeg, ffprobe } = await resolveBinaries();
       const probeService = createFfprobeService({ run, ffprobePath: ffprobe });
-      const transcoder = createTranscoder({
+      const sharedDeps = {
         probe: probeService,
         ffmpeg: createFfmpegRunner({ run, ffmpegPath: ffmpeg }),
         fs: createNodeFileSystem(),
         clock: systemClock,
         ...(options.logger ? { logger: options.logger } : {}),
-      });
-      return { probe: probeService, transcoder };
+      };
+      return {
+        probe: probeService,
+        transcoder: createTranscoder(sharedDeps),
+        audio: createAudioTools(sharedDeps),
+      };
     })();
     return servicesPromise;
   };
@@ -110,6 +128,14 @@ export function createVhjs(options: VhjsOptions = {}): Vhjs {
         },
         request,
       );
+    },
+    async extractAudio(request) {
+      const { audio } = await services();
+      return audio.extractAudio(request);
+    },
+    async addAudioTrack(request) {
+      const { audio } = await services();
+      return audio.addAudioTrack(request);
     },
   };
 }
@@ -144,6 +170,30 @@ export function startTranscodeToHls(
   options: VhjsOptions = {},
 ): TranscodeJob {
   return createVhjs(options).startTranscodeToHls(request);
+}
+
+/**
+ * One-shot audio extraction. Convenience wrapper over
+ * `createVhjs(options).extractAudio(request)` — prefer a shared `createVhjs`
+ * instance for multiple calls. Pass `dryRun: true` to get the argv without executing.
+ */
+export function extractAudio(
+  request: ExtractAudioRequest,
+  options: VhjsOptions = {},
+): Promise<ExtractAudioResult | AudioDryRunResult> {
+  return createVhjs(options).extractAudio(request);
+}
+
+/**
+ * One-shot alternate-audio add. Convenience wrapper over
+ * `createVhjs(options).addAudioTrack(request)` — prefer a shared `createVhjs`
+ * instance for multiple calls.
+ */
+export function addAudioTrack(
+  request: AddAudioTrackRequest,
+  options: VhjsOptions = {},
+): Promise<AddAudioTrackResult | AudioDryRunResult> {
+  return createVhjs(options).addAudioTrack(request);
 }
 
 /**

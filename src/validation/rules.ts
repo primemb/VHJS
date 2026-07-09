@@ -110,6 +110,37 @@ export function clampBitrate(
   };
 }
 
+/** Default tolerance for the audio/video duration check (2s). */
+export const DEFAULT_AUDIO_DURATION_TOLERANCE_MS = 2_000;
+
+/**
+ * Compare an added audio track's duration to the video's. Returns an
+ * `AUDIO_DURATION_MISMATCH` warning when they drift apart by more than
+ * `toleranceMs`, or `null` when they agree or either duration is unknown
+ * (`null` — nothing to measure). Pure: warns, never throws (CLAUDE.md Phase-5
+ * "warn on mismatch").
+ */
+export function checkAudioDurationMatch(
+  videoDurationMs: number | null,
+  audioDurationMs: number | null,
+  toleranceMs: number = DEFAULT_AUDIO_DURATION_TOLERANCE_MS,
+): ValidationWarning | null {
+  if (videoDurationMs === null || audioDurationMs === null) {
+    return null;
+  }
+  const drift = Math.abs(videoDurationMs - audioDurationMs);
+  if (drift <= toleranceMs) {
+    return null;
+  }
+  return {
+    code: "AUDIO_DURATION_MISMATCH",
+    message:
+      `Added audio duration ${Math.round(audioDurationMs)}ms differs from the video ` +
+      `duration ${Math.round(videoDurationMs)}ms by ${Math.round(drift)}ms ` +
+      `(tolerance ${toleranceMs}ms); the track may drift out of sync.`,
+  };
+}
+
 /** The source reference bitrate for a track, falling back sensibly when unknown. */
 function videoReference(source: SourceMetadata): Bitrate | null {
   return primaryVideoStream(source).bitrate ?? source.formatBitrate;

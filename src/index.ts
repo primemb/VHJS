@@ -18,7 +18,9 @@ export {
 export { startTranscodeJob, TranscodeJob } from "./builder/transcode-job.js";
 // --- Composed entry points (composition root) ---
 export {
+  addAudioTrack,
   createVhjs,
+  extractAudio,
   probe,
   startTranscodeToHls,
   transcodeToHls,
@@ -26,6 +28,16 @@ export {
   type VhjsOptions,
   vhjs,
 } from "./composition.js";
+// --- Audio use cases (builders + types) ---
+export {
+  type AudioExtractBuildOptions,
+  type AudioHlsBuildOptions,
+  type AudioTools,
+  type AudioToolsDeps,
+  buildAudioExtractCommand,
+  buildAudioHlsCommand,
+  createAudioTools,
+} from "./hls/audio.js";
 export {
   buildHlsCommand,
   DEFAULT_MASTER_PLAYLIST_NAME,
@@ -35,9 +47,21 @@ export {
   type HlsCommand,
   type HlsVariant,
 } from "./hls/command.js";
-
 // --- Pure ladder + command helpers ---
 export { autoLadder, type NormalizedLadder, normalizeLadder } from "./hls/ladder.js";
+// --- Playlist parse / serialize / patch (Phase 7, pulled forward) ---
+export {
+  type AlternateAudioOptions,
+  type Attributes,
+  addAlternateAudio,
+  type MasterPlaylist,
+  type MediaRendition,
+  parseMasterPlaylist,
+  serializeMasterPlaylist,
+  sumMediaPlaylistDurationMs,
+  type VariantStream,
+  variantHasMuxedAudio,
+} from "./hls/playlist.js";
 // --- Transcoder use-case types ---
 export {
   type DryRunResult,
@@ -47,6 +71,16 @@ export {
   type Transcoder,
   type TranscoderDeps,
 } from "./hls/transcoder.js";
+// --- Audio request/result types ---
+export {
+  type AddAudioTrackRequest,
+  type AddAudioTrackResult,
+  type AudioDryRunResult,
+  type AudioExtractMode,
+  type ExtractAudioRequest,
+  type ExtractAudioResult,
+  isAudioDryRun,
+} from "./types/audio.js";
 // --- Branded scalars ---
 export type { Bitrate, Brand, FrameRate, Milliseconds, Pixels } from "./types/brands.js";
 export { asBitrate, asFrameRate, asMilliseconds, asPixels } from "./types/brands.js";
@@ -93,6 +127,7 @@ export {
   ConflictingFfmpegArgError,
   FfmpegNotFoundError,
   FfprobeNotFoundError,
+  NoAudioTrackError,
   PlaylistParseError,
   ProbeError,
   ResolutionUpscaleError,
@@ -102,7 +137,9 @@ export {
 } from "./validation/errors.js";
 // --- Validation ---
 export {
+  checkAudioDurationMatch,
   clampBitrate,
+  DEFAULT_AUDIO_DURATION_TOLERANCE_MS,
   DEFAULT_BITRATE_POLICY,
   validateRendition,
 } from "./validation/rules.js";

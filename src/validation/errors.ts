@@ -21,7 +21,8 @@ export type VhjsErrorCode =
   | "UNSUPPORTED_CODEC"
   | "TRANSCODE_FAILED"
   | "PLAYLIST_PARSE"
-  | "CONFLICTING_FFMPEG_ARG";
+  | "CONFLICTING_FFMPEG_ARG"
+  | "NO_AUDIO_TRACK";
 
 /** Base class for all VHJS errors. Subclasses set a literal `code`. */
 export abstract class VhjsError extends Error {
@@ -168,6 +169,30 @@ export class TranscodeError extends VhjsError {
  */
 export class PlaylistParseError extends VhjsError {
   readonly code = "PLAYLIST_PARSE" as const;
+}
+
+/**
+ * An audio operation was asked to work on a source (or a specific track index)
+ * that has no audio stream — e.g. extracting audio from a video-only file, or
+ * adding an audio track whose input carries no audio. Thrown before FFmpeg runs.
+ */
+export class NoAudioTrackError extends VhjsError {
+  readonly code = "NO_AUDIO_TRACK" as const;
+
+  constructor(
+    /** The input that was expected to carry an audio track. */
+    readonly input: string,
+    /** The requested audio track index, when a specific one was asked for. */
+    readonly trackIndex?: number,
+    options?: ErrorOptions,
+  ) {
+    super(
+      trackIndex === undefined
+        ? `No audio stream found in "${input}". This operation requires an input with audio.`
+        : `Audio track index ${trackIndex} does not exist in "${input}".`,
+      options,
+    );
+  }
 }
 
 /**

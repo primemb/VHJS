@@ -29,6 +29,15 @@ export function sampleInput(): string {
   return resolve(here, "assets", "1min.mp4");
 }
 
+/**
+ * A sample clip that has an **audio track** (the default `1min.mp4` is
+ * audio-less, so the audio examples need a different input). Defaults to
+ * `mobile.mkv`; override with `VHJS_SAMPLE_AUDIO=/path/to/clip.mp4`.
+ */
+export function audioSampleInput(): string {
+  return process.env.VHJS_SAMPLE_AUDIO ?? resolve(here, "assets", "mobile.mkv");
+}
+
 /** A gitignored output directory for an example, under `examples/.out/<name>`. */
 export function outputDir(name: string): string {
   return resolve(here, ".out", name);

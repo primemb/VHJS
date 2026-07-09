@@ -43,7 +43,13 @@ pnpm example 02-basic-hls         # single 720p rendition
 pnpm example 03-abr-ladder        # auto ABR ladder + live progress
 pnpm example 07-progress-events   # EventEmitter + AsyncIterable progress
 pnpm example 08-dry-run           # print the ffmpeg argv without running it
+pnpm example 04-extract-audio     # demux audio to a file (copy + aac modes)
+pnpm example 05-add-audio-track   # add an alternate-audio track to a package
 ```
+
+> The audio examples (`04`/`05`) need an input **with an audio track**. The
+> default `1min.mp4` is audio-less, so they use `audioSampleInput()` (defaults to
+> `mobile.mkv`); point it elsewhere with `VHJS_SAMPLE_AUDIO=/path/to/clip.mp4`.
 
 If FFmpeg is not on your `PATH`, point the examples at the binaries explicitly:
 

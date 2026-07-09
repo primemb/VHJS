@@ -106,11 +106,29 @@ A task is not done until all of these hold — no exceptions:
 > Roadmap** (needs real VFR/HDR/anamorphic source media to validate the filter
 > chains end-to-end); the categories above are fully handled and e2e-covered.
 
-## Phase 5 — Audio features 🔴/🟡
-- [ ] 🔴 Extract/demux audio from a video → standalone file and/or dedicated audio rendition ("spread audio").
-- [ ] 🔴 Add **extra audio track** to an *existing* HLS package as an `EXT-X-MEDIA` alternate-audio rendition (language, name, default/autoselect flags).
-- [ ] 🟡 Multi-language audio groups in the master playlist.
-- [ ] Validate added audio duration ≈ video duration; warn on mismatch.
+## Phase 5 — Audio features 🔴/🟡 ✅
+- [x] 🔴 Extract/demux audio from a video → standalone file ("spread audio"),
+  two explicit modes: **`copy`** (verbatim bitstream) and **`aac`** (re-encode,
+  stereo downmix). Pure `buildAudioExtractCommand` + `buildAudioHlsCommand`
+  (audio-only HLS rendition) in `hls/audio.ts`; `extractAudio` use case over
+  injected ports; typed `NoAudioTrackError` before FFmpeg runs.
+- [x] 🔴 Add **extra audio track** to an *existing* HLS package as an
+  `EXT-X-MEDIA:TYPE=AUDIO` alternate-audio rendition (language, name,
+  default/autoselect flags) via `addAudioTrack`. Segments the audio into its own
+  media playlist and patches the master, **preserving** existing renditions.
+- [x] 🟡 Multi-language audio groups — repeated `addAudioTrack` calls with the
+  same `groupId` accumulate into one group in the master playlist.
+- [x] Validate added audio duration ≈ video duration (video duration summed from a
+  variant's `#EXTINF`); `AUDIO_DURATION_MISMATCH` warning on drift beyond
+  tolerance (`checkAudioDurationMatch`, pure). Also warns `MUXED_AUDIO_PRESENT`
+  when the base package's variants still carry muxed audio.
+
+> **Pulled forward from Phase 7:** a minimal `hls/playlist.ts` (master
+> parse/serialize + `addAlternateAudio` patch + `#EXTINF` summer) — the rest of
+> Phase 7 (media-playlist round-trip, subtitle patching) is still open. Verified:
+> `typecheck`/`lint`/`test:cov` (234 unit tests, 100% lines/functions, 94% branch,
+> no live FFmpeg), the `04-extract-audio`/`05-add-audio-track` examples, and
+> `tests/e2e/audio.e2e.test.ts` on real FFmpeg 8.1.2.
 
 ## Phase 6 — Subtitle features 🔴/🟡
 - [ ] 🔴 Add **WebVTT subtitles** to an existing HLS package as an `EXT-X-MEDIA` subtitle rendition (segment the VTT, generate subtitle media playlist).
@@ -118,9 +136,13 @@ A task is not done until all of these hold — no exceptions:
 - [ ] 🟡 Multiple subtitle languages / forced-subtitle flag.
 
 ## Phase 7 — Playlist manipulation 🔴
-- [ ] `hls/playlist.ts` — parse existing master + media `.m3u8` (→ `PlaylistParseError` on malformed).
-- [ ] Safely patch a master playlist to add audio/subtitle `EXT-X-MEDIA` + reference from `EXT-X-STREAM-INF` without clobbering existing renditions.
-- [ ] Round-trip tests (parse → serialize → parse).
+- [~] `hls/playlist.ts` — **master** `.m3u8` parse/serialize landed in Phase 5
+  (→ `PlaylistParseError` on malformed; `#EXTINF` summer for media playlists).
+  Full **media** playlist parsing (segments, byte-ranges, keys) still open.
+- [~] Safely patch a master playlist: audio `EXT-X-MEDIA` + `AUDIO=` reference done
+  (`addAlternateAudio`, preserves existing renditions). **Subtitle** `EXT-X-MEDIA`
+  patching still open (Phase 6).
+- [x] Round-trip tests (parse → serialize → parse) for the master playlist.
 
 ## Phase 8 — Framework friendliness 🟡
 - [ ] Recipes/examples: Express, Fastify, NestJS, Next.js route handler.
