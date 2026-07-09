@@ -9,6 +9,7 @@
  *
  * Run: `pnpm test:e2e`   (optionally with VHJS_FFMPEG_PATH / VHJS_FFPROBE_PATH)
  */
+import { existsSync } from "node:fs";
 import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -45,6 +46,10 @@ async function videoSize(path: string): Promise<{ width: number; height: number 
 
 const here = dirname(fileURLToPath(import.meta.url));
 const INPUT = resolve(here, "..", "..", "examples", "assets", "1min.mp4");
+// The sample clip is git-ignored (see examples/assets/.gitignore), so a fresh
+// clone with FFmpeg but no clip must skip the clip-dependent cases rather than
+// fail. The rotation case synthesizes its own input and needs no sample.
+const hasSample = existsSync(INPUT);
 
 const ffmpegPath = process.env.VHJS_FFMPEG_PATH ?? "ffmpeg";
 const ffprobePath = process.env.VHJS_FFPROBE_PATH ?? "ffprobe";
@@ -90,7 +95,7 @@ describe.skipIf(!available)("e2e: transcodeToHls against real FFmpeg", () => {
     }
   });
 
-  it("produces a master playlist, variant playlists and segments", async () => {
+  it.skipIf(!hasSample)("produces a master playlist, variant playlists and segments", async () => {
     outDir = await mkdtemp(join(tmpdir(), "vhjs-e2e-"));
 
     const result = await vhjs.transcodeToHls({
@@ -191,7 +196,7 @@ describe.skipIf(!available)("e2e: transcodeToHls against real FFmpeg", () => {
     }
   });
 
-  it("upscaling the source is rejected before FFmpeg runs", async () => {
+  it.skipIf(!hasSample)("upscaling the source is rejected before FFmpeg runs", async () => {
     const upscale: Rendition[] = [
       {
         height: asPixels(4320), // 8K — well above the source

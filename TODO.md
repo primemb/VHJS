@@ -96,10 +96,15 @@ A task is not done until all of these hold — no exceptions:
 - [x] Container-agnostic inputs (mp4/mkv/avi/mov/webm/…) + any source codec
   (always re-encode to H.264/AAC) — no extension/codec gate on input.
 - [x] Audio-less sources (video-only variants); multichannel downmix to stereo (`-ac 2`).
-- [ ] 🟡 Variable frame rate (VFR) — detect and normalize (`-vsync`/`fps` filter) for stable segments.
-- [ ] 🟡 HDR / 10-bit / wide-gamut — tonemap to SDR or at minimum force `yuv420p` for compatibility.
-- [ ] 🟡 Anamorphic / non-square pixels (SAR/DAR) — scale to square-pixel display dims.
-- [ ] 🟢 Multiple / foreign-language audio tracks — select or expose all.
+- [x] **Real-FFmpeg e2e coverage** for the above (`tests/e2e/robustness.e2e.test.ts`,
+  self-contained — synthesizes its own inputs via `lavfi`, no committed media):
+  non-H.264 source in a non-mp4 container → H.264/AAC; audio-less source (no audio
+  maps); 5.1 → stereo downmix. Also verified manually against real local assets
+  (`mobile.mkv`: VP9/Opus/portrait/60fps → correct portrait H.264/AAC).
+
+> The remaining input-normalization filter work below is **deferred to the
+> Roadmap** (needs real VFR/HDR/anamorphic source media to validate the filter
+> chains end-to-end); the categories above are fully handled and e2e-covered.
 
 ## Phase 5 — Audio features 🔴/🟡
 - [ ] 🔴 Extract/demux audio from a video → standalone file and/or dedicated audio rendition ("spread audio").
@@ -134,6 +139,15 @@ A task is not done until all of these hold — no exceptions:
 ---
 
 ## Roadmap / stretch 🟢
+- [ ] **Input-normalization filter chain** (moved from Phase 4.5 — needs real
+  source media to validate each filter chain end-to-end):
+  - [ ] 🟡 Variable frame rate (VFR) — detect (`r_frame_rate` vs `avg_frame_rate`)
+    and normalize with the `fps` filter / `-fps_mode cfr` for stable segments.
+  - [ ] 🟡 HDR / 10-bit / wide-gamut — tonemap to SDR (`zscale`+`tonemap`, needs an
+    FFmpeg built with libzimg) or at minimum force `format=yuv420p` for compatibility.
+  - [ ] 🟡 Anamorphic / non-square pixels (SAR/DAR) — scale to square-pixel display
+    dims (`scale=<dispW>:<h>,setsar=1`).
+  - [ ] 🟢 Multiple / foreign-language audio tracks — select or expose all.
 - [ ] Hardware acceleration: NVENC / QSV / VideoToolbox / AMF (auto-detect + opt-in).
 - [ ] fMP4 / CMAF segments (`-hls_segment_type fmp4`) + low-latency HLS.
 - [ ] Encryption: AES-128 and SAMPLE-AES key delivery.
