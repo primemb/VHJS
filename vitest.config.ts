@@ -6,14 +6,18 @@ export default defineConfig({
     globals: false,
     environment: "node",
     include: ["src/**/*.test.ts", "tests/**/*.test.ts"],
+    // E2E (real FFmpeg) runs via its own config — `pnpm test:e2e`.
+    exclude: ["tests/e2e/**", "node_modules/**", "dist/**"],
     coverage: {
       provider: "v8",
       reporter: ["text", "html", "lcov"],
       include: ["src/**/*.ts"],
-      // Barrels and generated declarations carry no testable logic. Type-only
-      // modules (metadata/progress/ports) stay included but report as no-ops;
-      // `types/brands.ts` has real runtime constructors and IS covered.
-      exclude: ["src/**/*.test.ts", "src/index.ts", "src/**/*.d.ts"],
+      // Barrels, the composition root, and generated declarations carry no
+      // testable branching logic — they wire real adapters and are exercised by
+      // the examples + opt-in e2e suite. Type-only modules (metadata/progress/
+      // ports) stay included but report as no-ops; `types/brands.ts` and
+      // `types/rendition.ts` have real runtime code and ARE covered.
+      exclude: ["src/**/*.test.ts", "src/index.ts", "src/composition.ts", "src/**/*.d.ts"],
       thresholds: {
         lines: 90,
         branches: 90,

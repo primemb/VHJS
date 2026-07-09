@@ -37,8 +37,51 @@ examples/
 
 ```bash
 pnpm install                      # from repo root; links the workspace
-ffmpeg -version                   # examples need FFmpeg on PATH
-pnpm example 03-abr-ladder        # planned script: runs examples/03-abr-ladder.ts via tsx
+ffmpeg -version                   # examples need FFmpeg + ffprobe
+pnpm example 01-probe             # probe the bundled clip, print SourceMetadata
+pnpm example 02-basic-hls         # single 720p rendition
+pnpm example 03-abr-ladder        # auto ABR ladder + live progress
+pnpm example 08-dry-run           # print the ffmpeg argv without running it
+```
+
+If FFmpeg is not on your `PATH`, point the examples at the binaries explicitly:
+
+```bash
+VHJS_FFMPEG_PATH=/path/to/ffmpeg VHJS_FFPROBE_PATH=/path/to/ffprobe \
+  pnpm example 03-abr-ladder
+```
+
+Generated HLS lands under `examples/.out/<name>/` (gitignored).
+
+## Two ways to call the API
+
+```ts
+import { createVhjs, probe, transcodeToHls } from "vhjs";
+
+// Preferred: configure once (binaries resolved a single time), reuse the instance.
+const vhjs = createVhjs({ ffmpegPath: "/opt/ffmpeg" });
+await vhjs.probe("in.mp4");
+await vhjs.transcodeToHls({ input: "in.mp4", outputDir: "out" });
+
+// One-shot convenience (options per call) — fine for a single call.
+await probe("in.mp4", { ffmpegPath: "/opt/ffmpeg" });
+await transcodeToHls({ input: "in.mp4", outputDir: "out" });
+```
+
+## Custom ffmpeg options
+
+Pass additive flags via `inputArgs` (before `-i`) and `outputArgs` (before the
+HLS muxer). VHJS rejects anything that collides with the flags it manages
+(mapping, codecs, rate control, `-preset`, the HLS muxer) with a typed
+`ConflictingFfmpegArgError`:
+
+```ts
+await vhjs.transcodeToHls({
+  input: "in.mp4",
+  outputDir: "out",
+  inputArgs: ["-hwaccel", "cuda"],        // global/input options
+  outputArgs: ["-tune", "film", "-crf", "20"], // per-output options
+});
 ```
 
 ## Rules for example code

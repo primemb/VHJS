@@ -50,30 +50,39 @@ A task is not done until all of these hold — no exceptions:
 > Also landed early (needed by the adapters): a Phase-1 subset of `validation/errors.ts` — base `VhjsError` (discriminant `code`) + `FfmpegNotFoundError`/`FfprobeNotFoundError`/`ProbeError`. The rest of the error hierarchy + rules land in **Phase 2**.
 > Public barrel (`index.ts`) now re-exports the typed errors, metadata/progress types, and branded types + constructors. Coverage: 100% lines/functions, 98% branches (≥90% gate).
 
-## Phase 2 — Validation layer 🔴
-- [ ] `validation/errors.ts` — base `VhjsError` + discriminated `code`; all error subclasses from `CLAUDE.md`.
-- [ ] `validation/rules.ts`:
-  - [ ] Reject **resolution upscale** (requested height > source) → `ResolutionUpscaleError`.
-  - [ ] Bitrate policy = **clamp + warn** near source; hard `BitrateExceedsSourceError` only when clearly above source (video & audio).
-  - [ ] Reject unsupported/absent codecs → `UnsupportedCodecError`.
-  - [ ] Emit a warning channel for clamped/redundant renditions.
-- [ ] Pure unit tests over mock `SourceMetadata` — **zero FFmpeg dependency**.
+## Phase 2 — Validation layer 🔴 ✅
+- [x] `validation/errors.ts` — base `VhjsError` + discriminated `code`; **all** error subclasses from `CLAUDE.md` now present (`ResolutionUpscaleError`, `BitrateExceedsSourceError`, `UnsupportedCodecError`, `TranscodeError`, `PlaylistParseError` on top of the Phase-1 binary/probe set).
+- [x] `validation/rules.ts` — pure decisions over `SourceMetadata` + a requested `Rendition`:
+  - [x] Reject **resolution upscale** (`assertNoUpscale`) → `ResolutionUpscaleError`.
+  - [x] Bitrate policy = **clamp + warn** near source (`clampBitrate`); hard `BitrateExceedsSourceError` only above `source × hardExceedFactor` (default 1.5), video & audio; passes through unchanged when the source bitrate is unknown; video ref falls back to the container bitrate.
+  - [x] Reject unsupported/absent codecs (`assertSupportedCodecs`, `primaryVideoStream`) → `UnsupportedCodecError`.
+  - [x] Warning side channel (`ValidationWarning` in `types/warnings.ts`): `BITRATE_CLAMPED` here; `REDUNDANT_RENDITION` from the ladder.
+- [x] Pure unit tests over mock `SourceMetadata` (via `makeSourceMetadata`/`makeRendition`) — **zero FFmpeg**.
 
-## Phase 3 — Core HLS transcode (MVP) 🔴
-- [ ] `hls/ladder.ts` — normalize/clamp a requested ABR ladder against source; auto-ladder helper (e.g. from 1080p source → 1080/720/480).
-- [ ] `core/ffmpeg.ts` — build HLS argv for a ladder (`-map`, `-c:v`, `-b:v`, `-c:a`, `-b:a`, `-hls_time`, `-hls_playlist_type`, `-master_pl_name`, `-var_stream_map`, segment naming).
-- [ ] `core/progress.ts` — parse ffmpeg progress → typed progress events (percent from duration, fps, speed, current rendition).
-- [ ] `hls/transcoder.ts` — orchestrate: probe → validate → build args → run → collect outputs → `TranscodeResult`.
-- [ ] `dryRun` mode — return the exact argv without executing.
-- [ ] Input/output location handling — validate input exists; create/validate output dir (never write outside it).
-- [ ] E2E test: transcode a small fixture to HLS, assert master + media playlists + segments exist and play-parse cleanly.
+## Phase 3 — Core HLS transcode (MVP) 🔴 ✅
+- [x] `types/rendition.ts` — `Rendition` (H.264/AAC literal codecs), `RenditionOutput`, `TranscodeResult`, `renditionName`, supported-codec lists. *(The `Rendition` type deferred from Phase 1 lands here.)*
+- [x] `hls/ladder.ts` — `autoLadder(source)` (standard rungs ≤ source height, bitrates clamped to source) + `normalizeLadder` (validate/clamp each rung, drop duplicate heights with a redundancy warning, sort highest-first). **Pure domain.**
+- [x] `hls/command.ts` — pure `buildHlsCommand`: split+scale `-filter_complex`, per-stream `-c:v`/`-b:v`/`-maxrate`/`-bufsize`, per-stream `-c:a`/`-b:a`, `-hls_time`/`-hls_playlist_type`/`-hls_flags`/`-master_pl_name`/`-var_stream_map`, `%v` variant sub-dirs. **Audio is conditional** (`includeAudio`) so audio-less sources don't fail on `-map 0:a:0`. *(Arg-building is a pure decision → lives in the domain, not `core/`, per CLAUDE.md "decision in the domain, I/O in an adapter"; the layout table's `core/ffmpeg.ts` is now just the runner.)*
+- [x] `core/ffmpeg.ts` — `createFfmpegRunner` adapter implementing the `FfmpegRunner` port: spawns via the injected `ProcessRunner`, streams parsed progress, retains a bounded stderr tail, rejects distinctly on abort.
+- [x] `core/progress.ts` — pure `extractDuration`/`parseProgressLine`/`hmsToMs` + a stateful `createProgressParser` (latches `Duration:`, buffers `\r`-terminated chunks) → typed `ProgressEvent` (percent/time/fps/speed).
+- [x] `hls/transcoder.ts` — orchestrates **probe → validate → build → run → collect** over injected ports; auto-ladder when none requested; logs warnings; returns `TranscodeResult`.
+- [x] `dryRun` mode — returns the exact argv + ladder + master path without creating dirs or running ffmpeg (`isDryRun` guard).
+- [x] Input/output handling — validates input exists (typed `ProbeError`), creates the output dir + one `stream_<name>/` per variant; all writes stay under `outputDir`.
+- [x] `core/fs.ts` (`node:fs` `FileSystem` adapter) + `core/clock.ts` (`systemClock`) + `composition.ts` root wiring real adapters into `probe()` / `transcodeToHls()`.
+- [x] E2E test (`tests/e2e/transcode.e2e.test.ts`, own `vitest.e2e.config.ts`, `pnpm test:e2e`): transcodes the bundled clip on **real FFmpeg**, asserts master + media playlists + segments exist and parse; self-skips when FFmpeg isn't resolvable. Verified green locally (FFmpeg 8.1.2).
+- [x] Examples: `01-probe`, `02-basic-hls`, `03-abr-ladder` (live progress), `08-dry-run` — all run against the bundled clip; binaries via PATH or `VHJS_FFMPEG_PATH`/`VHJS_FFPROBE_PATH`.
 
 ## Phase 4 — Public API & DX 🔴
+> Landed early (during Phase 3 follow-up): `createVhjs(options)` **instance API**
+> (binaries resolved once, memoized; `{ probe, transcodeToHls }` reused without
+> re-passing options) + one-shot `probe`/`transcodeToHls` wrappers; **custom
+> ffmpeg args** (`inputArgs`/`outputArgs`, additive-only, `ConflictingFfmpegArgError`
+> on collision with managed flags); **`AbortSignal`** wired end-to-end.
 - [ ] `types/config.ts` — `HlsJobConfig` as discriminated unions; sensible defaults.
-- [ ] `index.ts` — clean public surface: `transcodeToHls(config)`, `probe(input)`, plus event/`AsyncIterable` progress.
+- [~] `index.ts` — clean public surface: `createVhjs`/`transcodeToHls`/`probe` done; progress is a callback today — **still TODO:** event/`AsyncIterable` progress.
 - [ ] `builder/job-builder.ts` — optional fluent builder (`vhjs(input).output(dir).rendition(...).run()`).
-- [ ] Progress delivery: both `EventEmitter` and `AsyncIterable` (framework-neutral).
-- [ ] Cancellation via `AbortSignal` end-to-end.
+- [ ] Progress delivery: both `EventEmitter` and `AsyncIterable` (framework-neutral). *(callback `onProgress` exists.)*
+- [x] Cancellation via `AbortSignal` end-to-end.
 
 ## Phase 5 — Audio features 🔴/🟡
 - [ ] 🔴 Extract/demux audio from a video → standalone file and/or dedicated audio rendition ("spread audio").

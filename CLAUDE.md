@@ -270,25 +270,45 @@ it. The decision goes in the domain (pure, tested); the I/O goes in an adapter.
 
 ## Status
 
-**Phases 0, 0.5 & 1 complete** — on top of the Phase 0 toolchain:
+**Phases 0 – 3 complete.** VHJS transcodes video to adaptive-bitrate HLS
+end-to-end, verified on real FFmpeg (8.1.2). Highlights on top of the Phase 0–1
+foundation (ports + fakes, branded types, `process`/`binaries`/`ffprobe`
+adapters):
 
-- **Ports** (`ports/index.ts`): `ProbeService`, `FfmpegRunner`, `FileSystem`,
-  `Clock`, `Logger` — narrow, type-only interfaces. In-memory **fakes** for all
-  five live under `tests/fakes/`; fixtures (recorded ffprobe JSON, ffmpeg stderr
-  sample, `makeSourceMetadata` factory) under `tests/fixtures/`.
-- **Domain types**: `types/brands.ts` (branded `Bitrate`/`Pixels`/`FrameRate`/
-  `Milliseconds` + validating constructors), `types/metadata.ts`
-  (`SourceMetadata` + stream types), `types/progress.ts` (`ProgressEvent`).
-- **Adapters** (`core/`, the only layer touching `child_process`):
-  `process.ts` (promise spawn wrapper — capture/exit/abort/timeout, injectable
-  `spawn`), `binaries.ts` (PATH+override resolve, memoized, typed not-found
-  errors), `ffprobe.ts` (`ProbeService` impl; **pure** `parseProbeOutput` split
-  from I/O).
-- **Errors**: Phase-1 subset of `validation/errors.ts` — base `VhjsError` +
-  `FfmpegNotFoundError`/`FfprobeNotFoundError`/`ProbeError`.
+- **Validation** (`validation/`, pure, zero FFmpeg): full typed-error hierarchy
+  (`ResolutionUpscaleError`, `BitrateExceedsSourceError`, `UnsupportedCodecError`,
+  `TranscodeError`, `PlaylistParseError` + the Phase-1 set). `rules.ts` rejects
+  upscales, clamps-and-warns bitrates near source (hard error only above
+  `source × 1.5`), and rejects unsupported/absent codecs. Warnings ride a side
+  channel (`types/warnings.ts`).
+- **Domain output types**: `types/rendition.ts` (`Rendition` with H.264/AAC
+  literal codecs, `RenditionOutput`, `TranscodeResult`, `renditionName`).
+- **HLS use cases** (`hls/`, pure/domain): `ladder.ts` (auto + normalize),
+  `command.ts` (pure `buildHlsCommand` → exact ffmpeg argv; **audio conditional**
+  so audio-less sources don't fail), `transcoder.ts` (probe → validate → build →
+  run → collect over injected ports; `dryRun`, progress, `AbortSignal`).
+- **Adapters** (`core/`): `ffmpeg.ts` (`FfmpegRunner`, streams progress, bounded
+  stderr tail), `progress.ts` (stderr → `ProgressEvent`), `fs.ts`, `clock.ts`.
+- **Composition root** (`composition.ts`): `createVhjs(options)` factory resolves
+  the binaries **once** and returns `{ probe, transcodeToHls }` (memoized) so
+  callers don't re-pass options per call; thin `probe()`/`transcodeToHls()`
+  one-shot wrappers remain. Re-exported from `index.ts`.
+- **Custom ffmpeg args** (early Phase-4 DX): `inputArgs`/`outputArgs` on a
+  transcode request are injected verbatim (before `-i` / before the HLS muxer);
+  a flag VHJS already manages is rejected up front with
+  `ConflictingFfmpegArgError` (reserved-flag check in `hls/command.ts`).
 
-All green: `typecheck` / `lint` / `test:cov` (70 tests, 100% lines, 98% branch) /
-`build` (`.mjs` + `.d.mts`) / `example`. **No live FFmpeg in the suite.**
+> Note: the arg-builder lives in `hls/command.ts` (a pure *decision*), not
+> `core/ffmpeg.ts`, per the mandatory "decision in the domain, I/O in an adapter"
+> rule — so the inner layer never imports `core/`. `core/ffmpeg.ts` is now just
+> the runner. This refines the target-layout table above.
 
-Next: **Phase 2** — the validation layer (`validation/rules.ts` + the remaining
-typed errors: upscale, bitrate-exceeds-source, unsupported-codec). See `TODO.md`.
+All green: `typecheck` / `lint` / `test:cov` (**157 unit tests, 99.7% lines,
+95.8% branch**, no live FFmpeg) / `build` (`.mjs` + `.d.mts`) / `example` (probe,
+basic-hls, abr-ladder, dry-run) / **`test:e2e`** (real FFmpeg, self-skips when
+absent). FFmpeg not on PATH here → resolved via `VHJS_FFMPEG_PATH` /
+`VHJS_FFPROBE_PATH` overrides for `example`/`test:e2e`.
+
+Next: **Phase 4** — public API & DX (`types/config.ts` discriminated-union
+`HlsJobConfig`, fluent `builder/job-builder.ts`, `EventEmitter` + `AsyncIterable`
+progress). See `TODO.md`.
