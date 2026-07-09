@@ -111,6 +111,45 @@ describe("parseProbeOutput", () => {
     expect(meta.video[0]?.frameRate).toBeNull();
   });
 
+  it("reads clockwise rotation from a Display Matrix (ffmpeg reports counter-clockwise)", () => {
+    const meta = parseProbeOutput({
+      streams: [
+        {
+          index: 0,
+          codec_type: "video",
+          codec_name: "h264",
+          width: 1920,
+          height: 1080,
+          side_data_list: [{ side_data_type: "Display Matrix", rotation: -90 }],
+        },
+      ],
+    });
+    expect(meta.video[0]?.rotation).toBe(90);
+  });
+
+  it("falls back to the legacy rotate tag (already clockwise)", () => {
+    const meta = parseProbeOutput({
+      streams: [
+        {
+          index: 0,
+          codec_type: "video",
+          codec_name: "h264",
+          width: 1080,
+          height: 1920,
+          tags: { rotate: "270" },
+        },
+      ],
+    });
+    expect(meta.video[0]?.rotation).toBe(270);
+  });
+
+  it("defaults rotation to 0 when no rotation metadata is present", () => {
+    const meta = parseProbeOutput({
+      streams: [{ index: 0, codec_type: "video", codec_name: "h264", width: 640, height: 480 }],
+    });
+    expect(meta.video[0]?.rotation).toBe(0);
+  });
+
   it("defaults a missing codec name to 'unknown' and a missing index to -1", () => {
     const meta = parseProbeOutput({
       streams: [{ codec_type: "audio" }],

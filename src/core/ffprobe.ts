@@ -37,6 +37,12 @@ export function buildFfprobeArgs(input: string): string[] {
 
 // ---- raw ffprobe JSON shapes (loosely typed; validated while parsing) -------
 
+interface RawSideData {
+  side_data_type?: string;
+  /** Display Matrix rotation, in degrees **counter-clockwise** (ffmpeg convention). */
+  rotation?: number;
+}
+
 interface RawStream {
   index?: number;
   codec_type?: string;
@@ -48,6 +54,7 @@ interface RawStream {
   channels?: number;
   sample_rate?: string;
   tags?: Record<string, string>;
+  side_data_list?: RawSideData[];
 }
 
 interface RawProbe {
@@ -84,6 +91,33 @@ function toDurationMs(value: string | undefined): Milliseconds | null {
 
 function toChannels(value: number | undefined): number | null {
   return typeof value === "number" ? value : null;
+}
+
+/** Normalize any degree value to clockwise 0/90/180/270. */
+function normalizeClockwise(degrees: number): number {
+  const q = Math.round(degrees / 90) * 90; // snap to a quarter-turn
+  return ((q % 360) + 360) % 360;
+}
+
+/**
+ * Extract display rotation (degrees **clockwise**, normalized to 0/90/180/270).
+ * Prefers the modern Display-Matrix side-data (`rotation` is counter-clockwise,
+ * so we negate it) and falls back to the legacy `rotate` tag (already
+ * clockwise). Returns `0` when neither is present or parseable.
+ */
+function toRotation(stream: RawStream): number {
+  const matrix = stream.side_data_list?.find((s) => s.side_data_type === "Display Matrix");
+  if (matrix !== undefined && typeof matrix.rotation === "number") {
+    return normalizeClockwise(-matrix.rotation);
+  }
+  const tag = stream.tags?.rotate;
+  if (tag !== undefined) {
+    const n = Number(tag);
+    if (Number.isFinite(n)) {
+      return normalizeClockwise(n);
+    }
+  }
+  return 0;
 }
 
 function toSampleRate(value: string | undefined): number | null {
@@ -123,6 +157,7 @@ export function parseProbeOutput(raw: unknown): SourceMetadata {
           codec,
           width: asPixels(stream.width),
           height: asPixels(stream.height),
+          rotation: toRotation(stream),
           bitrate: toBitrate(stream.bit_rate),
           frameRate: toFrameRate(stream.r_frame_rate),
         });

@@ -97,6 +97,14 @@ describe("buildHlsCommand", () => {
     expect(args[args.indexOf("-var_stream_map") + 1]).toBe("v:0,name:1080p v:1,name:720p");
   });
 
+  it("adds no transpose to the graph (ffmpeg auto-rotates the source itself)", () => {
+    // Rotation is corrected by ffmpeg's default -autorotate at decode time, and
+    // the ladder already keys off display heights — so the graph must NOT add a
+    // transpose (that would double-rotate). See buildFilterGraph's rotation note.
+    const { args } = buildHlsCommand({ input: "in.mp4", outputDir: "out", renditions: ladder });
+    expect(args.join(" ")).not.toContain("transpose");
+  });
+
   describe("custom args", () => {
     it("injects inputArgs before -i and outputArgs before the HLS muxer", () => {
       const { args } = buildHlsCommand({

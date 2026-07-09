@@ -18,6 +18,7 @@ describe("autoLadder", () => {
         {
           index: 0,
           codec: "h264",
+          rotation: 0,
           width: asPixels(1280),
           height: asPixels(720),
           bitrate: asBitrate(2_800_000),
@@ -28,12 +29,32 @@ describe("autoLadder", () => {
     expect(autoLadder(source).map((r) => r.height)).toEqual([720, 480, 360, 240]);
   });
 
+  it("keys rungs off the DISPLAY height for a rotated portrait source", () => {
+    // Phone clip stored 1920x1080 with a 90° rotation → displays 1080 x 1920.
+    const source = makeSourceMetadata({
+      video: [
+        {
+          index: 0,
+          codec: "h264",
+          width: asPixels(1920),
+          height: asPixels(1080),
+          rotation: 90,
+          bitrate: asBitrate(5_000_000),
+          frameRate: null,
+        },
+      ],
+    });
+    // Display height 1920 admits the 1080-and-below rungs (not the stored 1080 cap).
+    expect(autoLadder(source).map((r) => r.height)).toEqual([1080, 720, 480, 360, 240]);
+  });
+
   it("clamps rung bitrates down to a low-bitrate source", () => {
     const source = makeSourceMetadata({
       video: [
         {
           index: 0,
           codec: "h264",
+          rotation: 0,
           width: asPixels(1920),
           height: asPixels(1080),
           bitrate: asBitrate(1_000_000), // well below the 1080p target
@@ -51,6 +72,7 @@ describe("autoLadder", () => {
         {
           index: 0,
           codec: "h264",
+          rotation: 0,
           width: asPixels(256),
           height: asPixels(144),
           bitrate: asBitrate(300_000),
@@ -69,6 +91,7 @@ describe("autoLadder", () => {
         {
           index: 0,
           codec: "h264",
+          rotation: 0,
           width: asPixels(1280),
           height: asPixels(720),
           bitrate: null,

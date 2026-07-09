@@ -84,6 +84,23 @@ A task is not done until all of these hold — no exceptions:
 - [ ] Progress delivery: both `EventEmitter` and `AsyncIterable` (framework-neutral). *(callback `onProgress` exists.)*
 - [x] Cancellation via `AbortSignal` end-to-end.
 
+## Phase 4.5 — Real-world input robustness 🟡
+> Driven by the CLAUDE.md "Real-world input handling" mandate: a transcoder must
+> survive whatever real users feed it, not just clean landscape MP4s.
+- [x] **Rotation / mobile portrait video.** Probe reads `rotation` (Display-Matrix
+  side-data → clockwise, legacy `rotate` tag fallback); `types/orientation.ts`
+  `displayDimensions` drives the ladder + upscale check off *display* dims. **No
+  transpose** — ffmpeg auto-rotates by default (verified ffmpeg 8.1.2, even in
+  `-filter_complex`); a manual transpose double-rotated → sideways. E2E asserts a
+  rotated source encodes portrait (width < height).
+- [x] Container-agnostic inputs (mp4/mkv/avi/mov/webm/…) + any source codec
+  (always re-encode to H.264/AAC) — no extension/codec gate on input.
+- [x] Audio-less sources (video-only variants); multichannel downmix to stereo (`-ac 2`).
+- [ ] 🟡 Variable frame rate (VFR) — detect and normalize (`-vsync`/`fps` filter) for stable segments.
+- [ ] 🟡 HDR / 10-bit / wide-gamut — tonemap to SDR or at minimum force `yuv420p` for compatibility.
+- [ ] 🟡 Anamorphic / non-square pixels (SAR/DAR) — scale to square-pixel display dims.
+- [ ] 🟢 Multiple / foreign-language audio tracks — select or expose all.
+
 ## Phase 5 — Audio features 🔴/🟡
 - [ ] 🔴 Extract/demux audio from a video → standalone file and/or dedicated audio rendition ("spread audio").
 - [ ] 🔴 Add **extra audio track** to an *existing* HLS package as an `EXT-X-MEDIA` alternate-audio rendition (language, name, default/autoselect flags).

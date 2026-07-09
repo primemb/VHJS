@@ -248,10 +248,43 @@ it. The decision goes in the domain (pure, tested); the I/O goes in an adapter.
 - Prefer **testability by design** (pure functions + DI) over heavy mocking. If
   something is hard to test, the design is wrong — refactor, don't add mocks.
 
+## Real-world input handling (proactive completeness — mandatory)
+
+VHJS must handle **everything a real user throws at a transcoder**, not just the
+happy path. Do not wait to be told about each edge case — anticipate them, flag
+the gaps, and either handle them or record them in `TODO.md`. Shipping a feature
+that only works on clean landscape MP4s is **not done**.
+
+The standing checklist of real-world input concerns (extend as you find more):
+
+- **Rotation / orientation.** Mobile videos store a rotation tag / Display-Matrix
+  side-data; `ffprobe` reports the *stored* (not displayed) dimensions. ffmpeg's
+  decoder auto-rotates by default (`-autorotate`, verified on 8.1.2 — even inside
+  `-filter_complex`), so the *pixels* come out correct without an explicit
+  `transpose`; do **not** add one (it double-rotates → sideways). But because
+  ffprobe reports stored dims, read the rotation and drive the ladder + upscale
+  check off *display* dimensions so they match the oriented output.
+  **(handled — see `types/orientation.ts`; rotation note in `hls/command.ts`.)**
+- **Non-even / odd dimensions.** H.264 requires even width & height — `scale=-2:H`
+  forces an even width; rung heights are even. Keep it that way.
+- **Any container.** We shell out, so mp4/mkv/avi/mov/webm/ts/flv all work; never
+  gate on file extension. Only requirement: a decodable video stream.
+- **Any source codec.** We always re-encode to H.264/AAC, so HEVC/AV1/VP9/etc.
+  sources are fine — codec validation is about *output* codecs, not input.
+- **Audio realities.** No audio track (video-only), multichannel (downmix to
+  stereo), multiple/foreign-language tracks, missing bitrate metadata.
+- **Missing / weird metadata.** Absent duration, bitrate, fps — already modelled
+  as `| null`; never assume a field is present.
+- **TODO (not yet handled):** variable frame rate (VFR) normalization; HDR /
+  10-bit / wide-gamut (tonemap or at least `yuv420p`); anamorphic / non-square
+  pixels (SAR/DAR); very-short/very-long sources. Track these in `TODO.md`.
+
 ## Guardrails for Claude
 
 - The repo is essentially empty — you are building from scratch. Prefer small,
   reviewable PRs that each land one slice of the pipeline (see `TODO.md`).
+- **Own the edge cases.** The user should not have to enumerate real-world inputs
+  for you — see "Real-world input handling" above. Find them yourself.
 - **No function without a unit test.** Write the test in the same change. Domain
   logic must be tested with fakes, never live FFmpeg.
 - **Keep the dependency direction inward.** Never `import` from `core/` inside
@@ -297,17 +330,22 @@ adapters):
   transcode request are injected verbatim (before `-i` / before the HLS muxer);
   a flag VHJS already manages is rejected up front with
   `ConflictingFfmpegArgError` (reserved-flag check in `hls/command.ts`).
+- **Rotation / mobile video** (Phase 4.5): probe reads `VideoStream.rotation`
+  (Display-Matrix side-data or legacy `rotate` tag); `types/orientation.ts`
+  drives the ladder + upscale check off *display* dimensions. Pixels are rotated
+  by ffmpeg's own default autorotation (no manual `transpose` — that would
+  double-rotate); a real-FFmpeg e2e asserts a rotated source encodes portrait.
 
 > Note: the arg-builder lives in `hls/command.ts` (a pure *decision*), not
 > `core/ffmpeg.ts`, per the mandatory "decision in the domain, I/O in an adapter"
 > rule — so the inner layer never imports `core/`. `core/ffmpeg.ts` is now just
 > the runner. This refines the target-layout table above.
 
-All green: `typecheck` / `lint` / `test:cov` (**157 unit tests, 99.7% lines,
-95.8% branch**, no live FFmpeg) / `build` (`.mjs` + `.d.mts`) / `example` (probe,
-basic-hls, abr-ladder, dry-run) / **`test:e2e`** (real FFmpeg, self-skips when
-absent). FFmpeg not on PATH here → resolved via `VHJS_FFMPEG_PATH` /
-`VHJS_FFPROBE_PATH` overrides for `example`/`test:e2e`.
+All green: `typecheck` / `lint` / `test:cov` (**168 unit tests, 99.7% lines,
+95.5% branch**, no live FFmpeg) / `build` (`.mjs` + `.d.mts`) / `example` (probe,
+basic-hls, abr-ladder, dry-run) / **`test:e2e`** (real FFmpeg 8.1.2: base
+transcode, rotated-source-stays-portrait, upscale-rejected; self-skips when
+absent). FFmpeg resolves from PATH or `VHJS_FFMPEG_PATH` / `VHJS_FFPROBE_PATH`.
 
 Next: **Phase 4** — public API & DX (`types/config.ts` discriminated-union
 `HlsJobConfig`, fluent `builder/job-builder.ts`, `EventEmitter` + `AsyncIterable`

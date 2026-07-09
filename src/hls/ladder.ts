@@ -15,6 +15,7 @@
  */
 import { asBitrate, asPixels, type Bitrate } from "../types/brands.js";
 import type { SourceMetadata } from "../types/metadata.js";
+import { displayDimensions } from "../types/orientation.js";
 import { type Rendition, renditionName } from "../types/rendition.js";
 import type { ValidationWarning } from "../types/warnings.js";
 import {
@@ -67,11 +68,14 @@ export function autoLadder(source: SourceMetadata): Rendition[] {
   const videoRef = video.bitrate ?? source.formatBitrate;
   const audioRef = source.audio[0]?.bitrate ?? null;
 
-  const rungs = STANDARD_RUNGS.filter((rung) => rung.height <= video.height);
+  // Key rungs off the *displayed* height: a rotated portrait clip stored as
+  // 1920x1080 displays 1080 wide x 1920 tall, so its ladder tops out at 1920.
+  const displayHeight = displayDimensions(video).height;
+  const rungs = STANDARD_RUNGS.filter((rung) => rung.height <= displayHeight);
   const chosen =
     rungs.length > 0
       ? rungs
-      : [{ height: video.height, videoBitrate: 400_000, audioBitrate: 64_000 }];
+      : [{ height: displayHeight, videoBitrate: 400_000, audioBitrate: 64_000 }];
 
   return chosen.map((rung) => ({
     height: asPixels(rung.height),

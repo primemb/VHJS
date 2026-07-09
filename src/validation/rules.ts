@@ -17,6 +17,7 @@
  */
 import type { Bitrate } from "../types/brands.js";
 import type { SourceMetadata, VideoStream } from "../types/metadata.js";
+import { displayDimensions } from "../types/orientation.js";
 import {
   type Rendition,
   SUPPORTED_AUDIO_CODECS,
@@ -65,11 +66,16 @@ export function primaryVideoStream(source: SourceMetadata): VideoStream {
   return video;
 }
 
-/** Throw `ResolutionUpscaleError` if the rendition height is above the source. */
+/**
+ * Throw `ResolutionUpscaleError` if the rendition height is above the source's
+ * *displayed* height. We compare against the display height (not the stored
+ * `height`) so a rotated portrait source is measured against what the viewer
+ * actually sees — see `displayDimensions`.
+ */
 export function assertNoUpscale(rendition: Rendition, source: SourceMetadata): void {
-  const video = primaryVideoStream(source);
-  if (rendition.height > video.height) {
-    throw new ResolutionUpscaleError(rendition.height, video.height);
+  const displayHeight = displayDimensions(primaryVideoStream(source)).height;
+  if (rendition.height > displayHeight) {
+    throw new ResolutionUpscaleError(rendition.height, displayHeight);
   }
 }
 

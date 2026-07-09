@@ -7,7 +7,7 @@ import { FakeProbeService } from "../../tests/fakes/fake-probe-service.js";
 import { makeSourceMetadata } from "../../tests/fixtures/metadata.js";
 import { makeRendition } from "../../tests/fixtures/rendition.js";
 import type { Clock } from "../ports/index.js";
-import { asBitrate, asMilliseconds, asPixels } from "../types/brands.js";
+import { asBitrate, asFrameRate, asMilliseconds, asPixels } from "../types/brands.js";
 import type { ProgressEvent } from "../types/progress.js";
 import { ProbeError, ResolutionUpscaleError } from "../validation/errors.js";
 import { createTranscoder, isDryRun, type TranscoderDeps } from "./transcoder.js";
@@ -141,6 +141,35 @@ describe("createTranscoder — real run", () => {
     });
     expect(ffmpeg.lastArgs).not.toContain("0:a:0");
     expect(ffmpeg.lastArgs.join(" ")).not.toContain("-c:a:0");
+  });
+
+  it("auto-ladders a rotated portrait source off its DISPLAY height (no transpose)", async () => {
+    // Stored 720x1280 portrait tagged with a 90° rotation → displays 1280x720
+    // landscape; the ladder must key off the 1280 display width-as-height... i.e.
+    // display height 720. Use a tall stored frame rotated so display height > stored.
+    const rotated = makeSourceMetadata({
+      video: [
+        {
+          index: 0,
+          codec: "h264",
+          width: asPixels(1920), // stored landscape
+          height: asPixels(1080),
+          rotation: 90, // displays portrait 1080x1920 → display height 1920
+          bitrate: asBitrate(5_000_000),
+          frameRate: asFrameRate(30),
+        },
+      ],
+    });
+    const { deps, ffmpeg } = setup({ metadata: rotated });
+    const result = await createTranscoder(deps).transcodeToHls({
+      input: "in.mp4",
+      outputDir: "out",
+    });
+    if (isDryRun(result)) throw new Error("expected a real run");
+    // Display height 1920 admits the full standard ladder down from 1080p.
+    expect(result.renditions.map((r) => r.name)).toEqual(["1080p", "720p", "480p", "360p", "240p"]);
+    // ffmpeg's own autorotate handles the pixels; we must not add a transpose.
+    expect(ffmpeg.lastArgs.join(" ")).not.toContain("transpose");
   });
 
   it("threads custom input/output args into the built ffmpeg command", async () => {

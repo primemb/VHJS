@@ -13,8 +13,22 @@ export interface VideoStream {
   readonly index: number;
   /** Codec name as reported by ffprobe, e.g. `"h264"`, `"hevc"`, `"vp9"`. */
   readonly codec: string;
+  /** Stored (coded) width, before any rotation is applied. See `rotation`. */
   readonly width: Pixels;
+  /** Stored (coded) height, before any rotation is applied. See `rotation`. */
   readonly height: Pixels;
+  /**
+   * Display rotation in **degrees clockwise**, normalized to one of `0`, `90`,
+   * `180`, `270`. Mobile cameras record in sensor orientation and tag the
+   * intended rotation (via a `rotate` tag or a Display-Matrix side-data entry);
+   * `width`/`height` above are the *stored* frame, so for a 90°/270° rotation the
+   * *displayed* dimensions are swapped. ffmpeg auto-applies this rotation when
+   * transcoding (so the output is display-oriented), but ffprobe still reports
+   * the stored size — use `displayDimensions` (`types/orientation`) to get the
+   * oriented size the ladder should key off. `0` when the source carries no
+   * rotation metadata.
+   */
+  readonly rotation: number;
   /** Per-stream bitrate, or `null` when ffprobe does not report one. */
   readonly bitrate: Bitrate | null;
   /** Frames per second, or `null` when unknown/unparseable. */

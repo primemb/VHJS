@@ -20,6 +20,29 @@ import { isDryRun } from "../../src/hls/transcoder.js";
 import { createVhjs, type Rendition, type VhjsOptions } from "../../src/index.js";
 import { asBitrate, asPixels } from "../../src/types/brands.js";
 
+const run = createProcessRunner();
+
+/** Probe one output file's first video stream dimensions with real ffprobe. */
+async function videoSize(path: string): Promise<{ width: number; height: number }> {
+  const { stdout } = await run(ffprobePath, {
+    args: [
+      "-v",
+      "error",
+      "-select_streams",
+      "v:0",
+      "-show_entries",
+      "stream=width,height",
+      "-of",
+      "csv=p=0",
+      path,
+    ],
+  });
+  // mpegts (.ts) reports the stream twice (once under [PROGRAM]); take line one.
+  const firstLine = stdout.trim().split(/\r?\n/)[0] ?? "";
+  const [width, height] = firstLine.split(",").map(Number);
+  return { width: width ?? 0, height: height ?? 0 };
+}
+
 const here = dirname(fileURLToPath(import.meta.url));
 const INPUT = resolve(here, "..", "..", "examples", "assets", "1min.mp4");
 
@@ -103,6 +126,69 @@ describe.skipIf(!available)("e2e: transcodeToHls against real FFmpeg", () => {
     }
 
     expect(result.elapsedMs).toBeGreaterThan(0);
+  });
+
+  it("keeps a rotated (portrait) source upright — output is portrait, not sideways", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "vhjs-e2e-rot-"));
+    try {
+      // Author a landscape 640x480 clip, then bake a 90° display rotation into a
+      // copy (ffmpeg writes a Display Matrix). It *displays* portrait 480x640.
+      const base = join(dir, "base.mp4");
+      const rotated = join(dir, "rotated.mp4");
+      await run(ffmpegPath, {
+        args: [
+          "-y",
+          "-f",
+          "lavfi",
+          "-i",
+          "testsrc=size=640x480:duration=1:rate=15",
+          "-c:v",
+          "libx264",
+          "-pix_fmt",
+          "yuv420p",
+          base,
+          "-loglevel",
+          "error",
+        ],
+      });
+      await run(ffmpegPath, {
+        args: [
+          "-y",
+          "-display_rotation:v:0",
+          "-90",
+          "-i",
+          base,
+          "-c",
+          "copy",
+          rotated,
+          "-loglevel",
+          "error",
+        ],
+      });
+
+      const outDirRot = join(dir, "hls");
+      // Auto-ladder (clamps bitrates to the source, so the synthetic low-bitrate
+      // testsrc clip is fine). Display is portrait 480x640 → top rung is 480p.
+      const result = await vhjs.transcodeToHls({
+        input: rotated,
+        outputDir: outDirRot,
+        segmentDuration: 4,
+        outputArgs: ["-pix_fmt", "yuv420p"],
+      });
+      if (isDryRun(result)) throw new Error("expected a real run");
+
+      // The ladder must key off the DISPLAY height (640), not the stored 480.
+      expect(result.renditions[0]?.name).toBe("480p");
+
+      // Probe the first emitted segment: it must be PORTRAIT (width < height).
+      // A double-rotation or a dropped rotation would come out landscape here.
+      const segment = join(dirname(result.renditions[0]?.playlistPath ?? ""), "data000.ts");
+      const { width, height } = await videoSize(segment);
+      expect(height).toBe(480);
+      expect(width).toBeLessThan(height);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 
   it("upscaling the source is rejected before FFmpeg runs", async () => {

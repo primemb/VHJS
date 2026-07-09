@@ -41,6 +41,11 @@ export type {
   SubtitleStream,
   VideoStream,
 } from "./types/metadata.js";
+export {
+  type DisplayDimensions,
+  displayDimensions,
+  isQuarterTurned,
+} from "./types/orientation.js";
 export type { ProgressEvent } from "./types/progress.js";
 export {
   type AudioCodec,

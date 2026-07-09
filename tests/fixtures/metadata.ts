@@ -16,6 +16,7 @@ export function makeSourceMetadata(overrides: Partial<SourceMetadata> = {}): Sou
         codec: "h264",
         width: asPixels(1920),
         height: asPixels(1080),
+        rotation: 0,
         bitrate: asBitrate(5_000_000),
         frameRate: asFrameRate(30),
       },

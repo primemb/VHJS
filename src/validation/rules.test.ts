@@ -24,6 +24,7 @@ function video(overrides: Partial<VideoStream> = {}): VideoStream {
     codec: "h264",
     width: asPixels(1920),
     height: asPixels(1080),
+    rotation: 0,
     bitrate: asBitrate(5_000_000),
     frameRate: null,
     ...overrides,
@@ -63,6 +64,17 @@ describe("assertNoUpscale", () => {
 
   it("rejects a height above the source", () => {
     const source = makeSourceMetadata();
+    expect(() => assertNoUpscale(makeRendition({ height: asPixels(2160) }), source)).toThrow(
+      ResolutionUpscaleError,
+    );
+  });
+
+  it("measures against the DISPLAY height for a rotated (portrait) source", () => {
+    // Stored 1920x1080 but rotated 90° → displays 1080 wide x 1920 tall.
+    const source = makeSourceMetadata({ video: [video({ rotation: 90 })] });
+    // 1440p is an upscale of the stored 1080 height, but valid against the 1920 display height.
+    expect(() => assertNoUpscale(makeRendition({ height: asPixels(1440) }), source)).not.toThrow();
+    // 2160p is above the 1920 display height → still rejected.
     expect(() => assertNoUpscale(makeRendition({ height: asPixels(2160) }), source)).toThrow(
       ResolutionUpscaleError,
     );

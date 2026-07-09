@@ -153,7 +153,19 @@ function toPosix(path: string): string {
   return path.replace(/\\/g, "/").replace(/\/+$/, "");
 }
 
-/** Build the `-filter_complex` graph that splits the source and scales each rung. */
+/**
+ * Build the `-filter_complex` graph that splits the source and scales each rung.
+ *
+ * Rotation note: we do **not** add an explicit `transpose`. Modern ffmpeg
+ * (verified on 8.1.2) applies the source's display-matrix rotation at decode
+ * time by default (`-autorotate`, on), so `[0:v]` is already display-oriented
+ * even inside a complex filtergraph — a portrait phone clip enters this graph
+ * portrait. Because ffprobe reports the *stored* dimensions (pre-rotation), the
+ * rung heights fed here must be the *displayed* heights (see `hls/ladder`); we
+ * then just `scale=-2:<h>` to each — `-2` keeps aspect and forces an even width
+ * (H.264 requires even dimensions). Adding our own transpose would double-rotate
+ * and ship sideways video.
+ */
 function buildFilterGraph(renditions: readonly Rendition[]): string {
   const labels = renditions.map((_, i) => `[v${i}]`).join("");
   const split = `[0:v]split=${renditions.length}${labels}`;
