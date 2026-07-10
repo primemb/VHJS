@@ -21,6 +21,7 @@ import { createFfprobeService } from "./core/ffprobe.js";
 import { createNodeFileSystem } from "./core/fs.js";
 import { createProcessRunner } from "./core/process.js";
 import { type AudioTools, createAudioTools } from "./hls/audio.js";
+import { createSubtitleTools, type SubtitleTools } from "./hls/subtitle.js";
 import {
   createTranscoder,
   type TranscodeOutcome,
@@ -36,6 +37,11 @@ import type {
   ExtractAudioResult,
 } from "./types/audio.js";
 import type { SourceMetadata } from "./types/metadata.js";
+import type {
+  AddSubtitleTrackRequest,
+  AddSubtitleTrackResult,
+  SubtitleDryRunResult,
+} from "./types/subtitle.js";
 
 /** Options common to the composed entry points. */
 export interface VhjsOptions {
@@ -59,6 +65,10 @@ export interface Vhjs {
   extractAudio(request: ExtractAudioRequest): Promise<ExtractAudioResult | AudioDryRunResult>;
   /** Add an alternate-audio rendition to an existing HLS package. */
   addAudioTrack(request: AddAudioTrackRequest): Promise<AddAudioTrackResult | AudioDryRunResult>;
+  /** Add a segmented WebVTT subtitle rendition to an existing HLS package. */
+  addSubtitleTrack(
+    request: AddSubtitleTrackRequest,
+  ): Promise<AddSubtitleTrackResult | SubtitleDryRunResult>;
 }
 
 /** Build the `BinaryOverrides` object, omitting undefined keys. */
@@ -87,7 +97,12 @@ export function createVhjs(options: VhjsOptions = {}): Vhjs {
 
   // Build the probe service + transcoder + audio tools once, after the first
   // binary resolve. They share the same adapters (ffmpeg runner, fs, clock).
-  type Services = { probe: ProbeService; transcoder: Transcoder; audio: AudioTools };
+  type Services = {
+    probe: ProbeService;
+    transcoder: Transcoder;
+    audio: AudioTools;
+    subtitle: SubtitleTools;
+  };
   let servicesPromise: Promise<Services> | undefined;
   const services = (): Promise<Services> => {
     servicesPromise ??= (async () => {
@@ -104,6 +119,7 @@ export function createVhjs(options: VhjsOptions = {}): Vhjs {
         probe: probeService,
         transcoder: createTranscoder(sharedDeps),
         audio: createAudioTools(sharedDeps),
+        subtitle: createSubtitleTools(sharedDeps),
       };
     })();
     return servicesPromise;
@@ -136,6 +152,10 @@ export function createVhjs(options: VhjsOptions = {}): Vhjs {
     async addAudioTrack(request) {
       const { audio } = await services();
       return audio.addAudioTrack(request);
+    },
+    async addSubtitleTrack(request) {
+      const { subtitle } = await services();
+      return subtitle.addSubtitleTrack(request);
     },
   };
 }
@@ -194,6 +214,14 @@ export function addAudioTrack(
   options: VhjsOptions = {},
 ): Promise<AddAudioTrackResult | AudioDryRunResult> {
   return createVhjs(options).addAudioTrack(request);
+}
+
+/** One-shot subtitle add; SRT inputs are converted to segmented WebVTT. */
+export function addSubtitleTrack(
+  request: AddSubtitleTrackRequest,
+  options: VhjsOptions = {},
+): Promise<AddSubtitleTrackResult | SubtitleDryRunResult> {
+  return createVhjs(options).addSubtitleTrack(request);
 }
 
 /**

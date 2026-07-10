@@ -130,18 +130,25 @@ A task is not done until all of these hold — no exceptions:
 > no live FFmpeg), the `04-extract-audio`/`05-add-audio-track` examples, and
 > `tests/e2e/audio.e2e.test.ts` on real FFmpeg 8.1.2.
 
-## Phase 6 — Subtitle features 🔴/🟡
-- [ ] 🔴 Add **WebVTT subtitles** to an existing HLS package as an `EXT-X-MEDIA` subtitle rendition (segment the VTT, generate subtitle media playlist).
-- [ ] 🟡 Convert SRT → WebVTT on ingest.
-- [ ] 🟡 Multiple subtitle languages / forced-subtitle flag.
+## Phase 6 — Subtitle features 🔴/🟡 ✅
+- [x] 🔴 Add **WebVTT subtitles** to an existing HLS package as an `EXT-X-MEDIA` subtitle rendition (segment the VTT, generate subtitle media playlist).
+- [x] 🟡 Convert SRT → WebVTT on ingest.
+- [x] 🟡 Multiple subtitle languages / forced-subtitle flag.
+
+> `hls/subtitle.ts` keeps FFmpeg arg-building pure (`buildSubtitleHlsCommand`)
+> and orchestrates probing, segmentation, and master patching over injected
+> ports (`createSubtitleTools`). The segment muxer writes a VOD M3U8 plus
+> WebVTT segments; `-c:s webvtt` normalizes WebVTT and converts SRT on ingest.
+> `addAlternateSubtitle` preserves existing master content, accumulates
+> languages by `groupId`, sets `FORCED`, and references the group from every
+> variant. Verified by unit tests and real FFmpeg 8.1.2 E2E coverage.
 
 ## Phase 7 — Playlist manipulation 🔴
 - [~] `hls/playlist.ts` — **master** `.m3u8` parse/serialize landed in Phase 5
   (→ `PlaylistParseError` on malformed; `#EXTINF` summer for media playlists).
   Full **media** playlist parsing (segments, byte-ranges, keys) still open.
-- [~] Safely patch a master playlist: audio `EXT-X-MEDIA` + `AUDIO=` reference done
-  (`addAlternateAudio`, preserves existing renditions). **Subtitle** `EXT-X-MEDIA`
-  patching still open (Phase 6).
+- [x] Safely patch a master playlist: audio and subtitle `EXT-X-MEDIA` entries
+  plus `AUDIO=` / `SUBTITLES=` references preserve existing renditions.
 - [x] Round-trip tests (parse → serialize → parse) for the master playlist.
 
 ## Phase 8 — Framework friendliness 🟡

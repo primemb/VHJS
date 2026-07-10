@@ -303,7 +303,7 @@ The standing checklist of real-world input concerns (extend as you find more):
 
 ## Status
 
-**Phases 0 – 5 complete.** VHJS transcodes video to adaptive-bitrate HLS
+**Phases 0 – 6 complete.** VHJS transcodes video to adaptive-bitrate HLS
 end-to-end and now handles audio features (extract/demux + alternate-audio
 packaging), verified on real FFmpeg (8.1.2). Highlights on top of the Phase 0–1
 foundation (ports + fakes, branded types, `process`/`binaries`/`ffprobe`
@@ -354,10 +354,18 @@ adapters):
   adding an alternate group over them is spec-legal but a clean alternate-audio
   setup uses video-only variants (surfaced via the warning; demux-restructuring
   is deferred).
+- **Subtitle features** (Phase 6): `hls/subtitle.ts` — pure
+  `buildSubtitleHlsCommand` emits an M3U8 segment list plus WebVTT segments;
+  `createSubtitleTools` probes and validates a subtitle input, runs FFmpeg over
+  injected ports, and patches the existing master. WebVTT is normalized and SRT
+  is converted on ingest through `-c:s webvtt`. Repeated calls sharing a
+  `groupId` create multi-language groups; `FORCED`, `DEFAULT`, and `AUTOSELECT`
+  are exposed. Missing streams fail early with typed `NoSubtitleTrackError`.
 - **Playlist** (`hls/playlist.ts`, pure — *pulled forward from Phase 7*): master
   `.m3u8` `parseMasterPlaylist`/`serializeMasterPlaylist` (attribute values kept
-  verbatim for loss-free round-trip), `addAlternateAudio` patch (preserves
-  existing renditions, bumps `EXT-X-VERSION` ≥ 4), and `sumMediaPlaylistDurationMs`
+  verbatim for loss-free round-trip), `addAlternateAudio` / `addAlternateSubtitle`
+  patches (preserve existing renditions, bump `EXT-X-VERSION` ≥ 4), and
+  `sumMediaPlaylistDurationMs`
   (`#EXTINF` summer). Malformed input → `PlaylistParseError`.
 
 > Note: the arg-builder lives in `hls/command.ts` (a pure *decision*), not
@@ -365,17 +373,18 @@ adapters):
 > rule — so the inner layer never imports `core/`. `core/ffmpeg.ts` is now just
 > the runner. This refines the target-layout table above.
 
-All green: `typecheck` / `lint` / `test:cov` (**234 unit tests, 100% lines/
-functions, 94.14% branch**, no live FFmpeg) / `build` (`.mjs` + `.d.mts`) / `example`
+All green: `typecheck` / `lint` / `test:cov` (**252 unit tests, 100% lines/
+functions, 94.32% branch**, no live FFmpeg) / `build` (`.mjs` + `.d.mts`) / `example`
 (probe, basic-hls, abr-ladder, progress-events, dry-run, **extract-audio**,
-**add-audio-track**) / **`test:e2e`** (real FFmpeg 8.1.2: base transcode,
+**add-audio-track**, **add-subtitles**) / **`test:e2e`** (real FFmpeg 8.1.2: base transcode,
 rotated-source-stays-portrait, upscale-rejected, robustness set, **audio
-extract copy/aac + alternate-audio add**; self-skips when absent). FFmpeg
+extract copy/aac + alternate-audio add**, **WebVTT segmentation + SRT conversion**;
+self-skips when absent). FFmpeg
 resolves from PATH or `VHJS_FFMPEG_PATH` / `VHJS_FFPROBE_PATH`.
 
 > Audio examples need an input **with** an audio track (the bundled `1min.mp4` is
 > audio-less); `examples/_env.ts` `audioSampleInput()` defaults to `mobile.mkv`,
 > overridable via `VHJS_SAMPLE_AUDIO`.
 
-Next: **Phase 6** — subtitle features (WebVTT `EXT-X-MEDIA` renditions), then the
-rest of **Phase 7** (media-playlist parsing). See `TODO.md`.
+Next: the rest of **Phase 7** — full media-playlist parsing (segments,
+byte-ranges, keys). See `TODO.md`.

@@ -55,11 +55,23 @@ export interface AlternateAudioOptions {
   readonly channels?: number;
 }
 
+/** Options for adding one alternate subtitle rendition to a master playlist. */
+export interface AlternateSubtitleOptions {
+  readonly groupId: string;
+  readonly name: string;
+  readonly language: string;
+  /** Relative URI of the subtitle rendition's media playlist. */
+  readonly uri: string;
+  readonly isDefault: boolean;
+  readonly autoselect: boolean;
+  readonly forced: boolean;
+}
+
 const MEDIA_TAG = "#EXT-X-MEDIA:";
 const STREAM_INF_TAG = "#EXT-X-STREAM-INF:";
 const VERSION_TAG = "#EXT-X-VERSION:";
 /** Alternate renditions require HLS protocol version ≥ 4. */
-const MIN_ALTERNATE_AUDIO_VERSION = 4;
+const MIN_ALTERNATE_RENDITION_VERSION = 4;
 
 /** Split a source into lines, tolerating both `\n` and `\r\n`. */
 function toLines(text: string): string[] {
@@ -250,12 +262,43 @@ export function addAlternateAudio(
   attributes.push(["URI", `"${options.uri}"`]);
 
   return {
-    version: Math.max(playlist.version ?? 0, MIN_ALTERNATE_AUDIO_VERSION),
+    version: Math.max(playlist.version ?? 0, MIN_ALTERNATE_RENDITION_VERSION),
     otherTags: playlist.otherTags,
     media: [...playlist.media, { attributes }],
     variants: playlist.variants.map((variant) => ({
       ...variant,
       attributes: withAttribute(variant.attributes, "AUDIO", `"${options.groupId}"`),
+    })),
+  };
+}
+
+/**
+ * Add one WebVTT subtitle rendition and reference its group from every variant.
+ * Reusing `groupId` across calls creates a multi-language subtitle group.
+ */
+export function addAlternateSubtitle(
+  playlist: MasterPlaylist,
+  options: AlternateSubtitleOptions,
+): MasterPlaylist {
+  const autoselect = options.autoselect || options.isDefault;
+  const attributes: [string, string][] = [
+    ["TYPE", "SUBTITLES"],
+    ["GROUP-ID", `"${options.groupId}"`],
+    ["NAME", `"${options.name}"`],
+    ["LANGUAGE", `"${options.language}"`],
+    ["DEFAULT", options.isDefault ? "YES" : "NO"],
+    ["AUTOSELECT", autoselect ? "YES" : "NO"],
+    ["FORCED", options.forced ? "YES" : "NO"],
+    ["URI", `"${options.uri}"`],
+  ];
+
+  return {
+    version: Math.max(playlist.version ?? 0, MIN_ALTERNATE_RENDITION_VERSION),
+    otherTags: playlist.otherTags,
+    media: [...playlist.media, { attributes }],
+    variants: playlist.variants.map((variant) => ({
+      ...variant,
+      attributes: withAttribute(variant.attributes, "SUBTITLES", `"${options.groupId}"`),
     })),
   };
 }

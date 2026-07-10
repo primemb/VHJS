@@ -22,7 +22,8 @@ export type VhjsErrorCode =
   | "TRANSCODE_FAILED"
   | "PLAYLIST_PARSE"
   | "CONFLICTING_FFMPEG_ARG"
-  | "NO_AUDIO_TRACK";
+  | "NO_AUDIO_TRACK"
+  | "NO_SUBTITLE_TRACK";
 
 /** Base class for all VHJS errors. Subclasses set a literal `code`. */
 export abstract class VhjsError extends Error {
@@ -190,6 +191,24 @@ export class NoAudioTrackError extends VhjsError {
       trackIndex === undefined
         ? `No audio stream found in "${input}". This operation requires an input with audio.`
         : `Audio track index ${trackIndex} does not exist in "${input}".`,
+      options,
+    );
+  }
+}
+
+/** A subtitle input has no usable subtitle stream at the requested index. */
+export class NoSubtitleTrackError extends VhjsError {
+  readonly code = "NO_SUBTITLE_TRACK" as const;
+
+  constructor(
+    readonly input: string,
+    readonly trackIndex?: number,
+    options?: ErrorOptions,
+  ) {
+    super(
+      trackIndex === undefined
+        ? `No subtitle stream found in "${input}". This operation requires a subtitle input.`
+        : `Subtitle track index ${trackIndex} does not exist in "${input}".`,
       options,
     );
   }

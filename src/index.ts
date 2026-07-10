@@ -19,6 +19,7 @@ export { startTranscodeJob, TranscodeJob } from "./builder/transcode-job.js";
 // --- Composed entry points (composition root) ---
 export {
   addAudioTrack,
+  addSubtitleTrack,
   createVhjs,
   extractAudio,
   probe,
@@ -28,7 +29,6 @@ export {
   type VhjsOptions,
   vhjs,
 } from "./composition.js";
-// --- Audio use cases (builders + types) ---
 export {
   type AudioExtractBuildOptions,
   type AudioHlsBuildOptions,
@@ -52,8 +52,10 @@ export { autoLadder, type NormalizedLadder, normalizeLadder } from "./hls/ladder
 // --- Playlist parse / serialize / patch (Phase 7, pulled forward) ---
 export {
   type AlternateAudioOptions,
+  type AlternateSubtitleOptions,
   type Attributes,
   addAlternateAudio,
+  addAlternateSubtitle,
   type MasterPlaylist,
   type MediaRendition,
   parseMasterPlaylist,
@@ -62,6 +64,14 @@ export {
   type VariantStream,
   variantHasMuxedAudio,
 } from "./hls/playlist.js";
+// --- Audio use cases (builders + types) ---
+export {
+  buildSubtitleHlsCommand,
+  createSubtitleTools,
+  type SubtitleHlsBuildOptions,
+  type SubtitleTools,
+  type SubtitleToolsDeps,
+} from "./hls/subtitle.js";
 // --- Transcoder use-case types ---
 export {
   type DryRunResult,
@@ -119,6 +129,13 @@ export {
   type TranscodeResult,
   type VideoCodec,
 } from "./types/rendition.js";
+// --- Subtitle request/result types ---
+export {
+  type AddSubtitleTrackRequest,
+  type AddSubtitleTrackResult,
+  isSubtitleDryRun,
+  type SubtitleDryRunResult,
+} from "./types/subtitle.js";
 export type { ValidationWarning, ValidationWarningCode } from "./types/warnings.js";
 // --- Errors ---
 export type { VhjsErrorCode } from "./validation/errors.js";
@@ -128,6 +145,7 @@ export {
   FfmpegNotFoundError,
   FfprobeNotFoundError,
   NoAudioTrackError,
+  NoSubtitleTrackError,
   PlaylistParseError,
   ProbeError,
   ResolutionUpscaleError,

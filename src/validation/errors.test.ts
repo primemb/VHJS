@@ -4,6 +4,7 @@ import {
   ConflictingFfmpegArgError,
   FfmpegNotFoundError,
   FfprobeNotFoundError,
+  NoSubtitleTrackError,
   PlaylistParseError,
   ProbeError,
   ResolutionUpscaleError,
@@ -122,6 +123,21 @@ describe("PlaylistParseError", () => {
     expect(err.message).toBe("malformed master");
     expect(err.cause).toBe(cause);
     expect(err.name).toBe("PlaylistParseError");
+  });
+});
+
+describe("NoSubtitleTrackError", () => {
+  it("carries a typed code and input when no subtitles exist", () => {
+    const err = new NoSubtitleTrackError("captions.bin");
+    expect(err.code).toBe("NO_SUBTITLE_TRACK");
+    expect(err.input).toBe("captions.bin");
+    expect(err.message).toContain("No subtitle stream");
+  });
+
+  it("reports an invalid requested track index", () => {
+    const err = new NoSubtitleTrackError("captions.mkv", 3);
+    expect(err.trackIndex).toBe(3);
+    expect(err.message).toContain("index 3");
   });
 });
 

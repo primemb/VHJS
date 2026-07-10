@@ -45,6 +45,7 @@ pnpm example 07-progress-events   # EventEmitter + AsyncIterable progress
 pnpm example 08-dry-run           # print the ffmpeg argv without running it
 pnpm example 04-extract-audio     # demux audio to a file (copy + aac modes)
 pnpm example 05-add-audio-track   # add an alternate-audio track to a package
+pnpm example 06-add-subtitles     # add WebVTT/SRT subtitles to a package
 ```
 
 > The audio examples (`04`/`05`) need an input **with an audio track**. The
