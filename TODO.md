@@ -155,10 +155,10 @@ A task is not done until all of these hold — no exceptions:
   media playlist with byte ranges and key transitions (no FFmpeg required).
 
 ## Phase 8 — Framework friendliness 🟡
-- [ ] Recipes/examples: Express, Fastify, NestJS, Next.js route handler.
-- [ ] Example: stream progress to client via SSE/WebSocket.
-- [ ] Example: serve generated HLS statically.
-- [ ] Ensure zero framework deps leak into core bundle.
+- [x] Recipes/examples: Express, Fastify, NestJS, Next.js route handler.
+- [x] Example: stream progress to client via SSE/WebSocket.
+- [x] Example: serve generated HLS statically.
+- [x] Ensure zero framework deps leak into core bundle.
 
 ## Phase 9 — Docs, examples, release 🟡
 - [ ] README with quickstart + full API table.

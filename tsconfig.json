@@ -33,5 +33,5 @@
     }
   },
   "include": ["src", "tests", "examples", "*.config.ts"],
-  "exclude": ["dist", "node_modules"]
+  "exclude": ["dist", "node_modules", "examples/frameworks"]
 }

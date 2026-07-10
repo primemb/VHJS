@@ -303,7 +303,7 @@ The standing checklist of real-world input concerns (extend as you find more):
 
 ## Status
 
-**Phases 0 – 7 complete.** VHJS transcodes video to adaptive-bitrate HLS
+**Phases 0 – 8 complete.** VHJS transcodes video to adaptive-bitrate HLS
 end-to-end and now handles audio features (extract/demux + alternate-audio
 packaging), verified on real FFmpeg (8.1.2). Highlights on top of the Phase 0–1
 foundation (ports + fakes, branded types, `process`/`binaries`/`ffprobe`
@@ -383,6 +383,12 @@ rotated-source-stays-portrait, upscale-rejected, robustness set, **audio
 extract copy/aac + alternate-audio add**, **WebVTT segmentation + SRT conversion**;
 self-skips when absent). FFmpeg
 resolves from PATH or `VHJS_FFMPEG_PATH` / `VHJS_FFPROBE_PATH`.
+
+> **Framework recipes (Phase 8):** `examples/frameworks/` contains isolated,
+> copy-into-your-app Express, Fastify, NestJS, and Next.js recipes. Express and
+> Next.js expose `TranscodeJob` progress through SSE; all four demonstrate a
+> dedicated static HLS output root. Their dependencies are installed only by the
+> host app, and `examples/` remains excluded from the published package.
 
 > Audio examples need an input **with** an audio track (the bundled `1min.mp4` is
 > audio-less); `examples/_env.ts` `audioSampleInput()` defaults to `mobile.mkv`,

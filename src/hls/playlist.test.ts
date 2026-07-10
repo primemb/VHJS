@@ -6,10 +6,10 @@ import {
   formatAttributeList,
   getAttribute,
   parseAttributeList,
-  parseMediaPlaylist,
   parseMasterPlaylist,
-  serializeMediaPlaylist,
+  parseMediaPlaylist,
   serializeMasterPlaylist,
+  serializeMediaPlaylist,
   sumMediaPlaylistDurationMs,
   unquote,
   variantHasMuxedAudio,
@@ -394,7 +394,13 @@ describe("parseMediaPlaylist", () => {
       title: "Opening",
       uri: "media.ts",
       byteRange: { length: 1000, offset: 20 },
-      key: { attributes: [["METHOD", "AES-128"], ["URI", '"keys/first.key"'], ["IV", "0x1"]] },
+      key: {
+        attributes: [
+          ["METHOD", "AES-128"],
+          ["URI", '"keys/first.key"'],
+          ["IV", "0x1"],
+        ],
+      },
     });
     expect(playlist.segments[1]?.byteRange).toEqual({ length: 900, offset: null });
     expect(playlist.segments[1]?.tags).toEqual(["#EXT-X-DISCONTINUITY"]);
@@ -411,7 +417,12 @@ describe("parseMediaPlaylist", () => {
   });
 
   it("serializes sparse live playlists and avoids repeating an unchanged key", () => {
-    const key = { attributes: [["METHOD", "AES-128"], ["URI", '"key.bin"']] as const };
+    const key = {
+      attributes: [
+        ["METHOD", "AES-128"],
+        ["URI", '"key.bin"'],
+      ] as const,
+    };
     const text = serializeMediaPlaylist({
       version: null,
       targetDuration: null,
@@ -427,7 +438,12 @@ describe("parseMediaPlaylist", () => {
           title: "",
           uri: "two.ts",
           byteRange: null,
-          key: { attributes: [["METHOD", "AES-128"], ["URI", '"key.bin"']] },
+          key: {
+            attributes: [
+              ["METHOD", "AES-128"],
+              ["URI", '"key.bin"'],
+            ],
+          },
           tags: [],
         },
         { duration: 1, title: "", uri: "three.ts", byteRange: null, key: null, tags: [] },

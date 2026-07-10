@@ -28,10 +28,11 @@ examples/
   08-dry-run.ts            # print the FFmpeg argv without executing
   09-playlist-manipulation.ts # parse/inspect/serialize media playlist metadata
   frameworks/
-    express/               # minimal Express endpoint that transcodes an upload
-    fastify/               # Fastify equivalent
-    nestjs/                # NestJS provider/controller
-    nextjs/                # Next.js route handler + SSE progress to the browser
+    README.md              # setup, security, and integration notes
+    express/               # REST API + SSE progress + static HLS server
+    fastify/               # Fastify REST API + static HLS server
+    nestjs/                # NestJS provider/controller + static HLS server
+    nextjs/                # App Router route handlers + SSE + public HLS files
 ```
 
 ## Running an example (local dev)
@@ -62,6 +63,14 @@ VHJS_FFMPEG_PATH=/path/to/ffmpeg VHJS_FFPROBE_PATH=/path/to/ffprobe \
 ```
 
 Generated HLS lands under `examples/.out/<name>/` (gitignored).
+
+## Framework recipes
+
+The framework integrations live in [`frameworks/`](./frameworks/README.md). They
+are deliberately **copy-into-your-app recipes**, not VHJS dependencies: install
+only the framework you use in that application. The Express and Next.js recipes
+also expose a Server-Sent Events (SSE) endpoint backed by `TranscodeJob` progress;
+all recipes serve completed HLS packages from a dedicated output root.
 
 ## Two ways to call the API
 

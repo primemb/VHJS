@@ -292,7 +292,7 @@ function parseNonNegativeInteger(value: string, tag: string): number {
 function parseExtinf(value: string): { duration: number; title: string } {
   const comma = value.indexOf(",");
   if (comma === -1) {
-    throw new PlaylistParseError('#EXTINF must contain a duration followed by a comma and title.');
+    throw new PlaylistParseError("#EXTINF must contain a duration followed by a comma and title.");
   }
   const durationText = value.slice(0, comma).trim();
   const duration = Number(durationText);
