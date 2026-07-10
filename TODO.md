@@ -123,9 +123,9 @@ A task is not done until all of these hold — no exceptions:
   tolerance (`checkAudioDurationMatch`, pure). Also warns `MUXED_AUDIO_PRESENT`
   when the base package's variants still carry muxed audio.
 
-> **Pulled forward from Phase 7:** a minimal `hls/playlist.ts` (master
-> parse/serialize + `addAlternateAudio` patch + `#EXTINF` summer) — the rest of
-> Phase 7 (media-playlist round-trip, subtitle patching) is still open. Verified:
+> **Pulled forward from Phase 7:** the initial `hls/playlist.ts` work (master
+> parse/serialize + `addAlternateAudio` patch + `#EXTINF` summer). The Phase-5
+> slice was verified with:
 > `typecheck`/`lint`/`test:cov` (234 unit tests, 100% lines/functions, 94% branch,
 > no live FFmpeg), the `04-extract-audio`/`05-add-audio-track` examples, and
 > `tests/e2e/audio.e2e.test.ts` on real FFmpeg 8.1.2.
@@ -144,12 +144,15 @@ A task is not done until all of these hold — no exceptions:
 > variant. Verified by unit tests and real FFmpeg 8.1.2 E2E coverage.
 
 ## Phase 7 — Playlist manipulation 🔴
-- [~] `hls/playlist.ts` — **master** `.m3u8` parse/serialize landed in Phase 5
-  (→ `PlaylistParseError` on malformed; `#EXTINF` summer for media playlists).
-  Full **media** playlist parsing (segments, byte-ranges, keys) still open.
+- [x] `hls/playlist.ts` — parse/serialize both master and **media** `.m3u8`
+  playlists. The media model covers segments, `#EXTINF` duration/title, byte
+  ranges, inherited/reset encryption keys, standard media fields, and preserved
+  unfamiliar tags; malformed input raises `PlaylistParseError`.
 - [x] Safely patch a master playlist: audio and subtitle `EXT-X-MEDIA` entries
   plus `AUDIO=` / `SUBTITLES=` references preserve existing renditions.
-- [x] Round-trip tests (parse → serialize → parse) for the master playlist.
+- [x] Round-trip tests (parse → serialize → parse) for master and media playlists.
+- [x] Runnable `09-playlist-manipulation` example: inspect and reserialize a
+  media playlist with byte ranges and key transitions (no FFmpeg required).
 
 ## Phase 8 — Framework friendliness 🟡
 - [ ] Recipes/examples: Express, Fastify, NestJS, Next.js route handler.

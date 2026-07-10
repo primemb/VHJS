@@ -26,6 +26,7 @@ examples/
   06-add-subtitles.ts      # add WebVTT subtitles to an existing HLS package
   07-progress-events.ts    # subscribe to progress + cancel via AbortSignal
   08-dry-run.ts            # print the FFmpeg argv without executing
+  09-playlist-manipulation.ts # parse/inspect/serialize media playlist metadata
   frameworks/
     express/               # minimal Express endpoint that transcodes an upload
     fastify/               # Fastify equivalent
@@ -43,6 +44,7 @@ pnpm example 02-basic-hls         # single 720p rendition
 pnpm example 03-abr-ladder        # auto ABR ladder + live progress
 pnpm example 07-progress-events   # EventEmitter + AsyncIterable progress
 pnpm example 08-dry-run           # print the ffmpeg argv without running it
+pnpm example 09-playlist-manipulation # parse and reserialize a media playlist (no FFmpeg needed)
 pnpm example 04-extract-audio     # demux audio to a file (copy + aac modes)
 pnpm example 05-add-audio-track   # add an alternate-audio track to a package
 pnpm example 06-add-subtitles     # add WebVTT/SRT subtitles to a package

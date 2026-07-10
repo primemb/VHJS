@@ -7,10 +7,9 @@
  * and rewriting their `EXT-X-STREAM-INF` lines, so a real parse → model → patch →
  * serialize round-trip is cleaner than blind text appending.
  *
- * This is the minimal slice of Phase 7's `hls/playlist.ts` pulled forward: the
- * master playlist plus an `#EXTINF` summer for media playlists. Attribute values
- * are stored **verbatim** (surrounding quotes included) so serialization is
- * loss-free without re-deriving each attribute's quoting rules.
+ * This module supports both master and media playlists. Attribute values are
+ * stored **verbatim** (surrounding quotes included) so serialization never has
+ * to re-derive each attribute's quoting rules.
  *
  * Inner layer: imports `types/`/`validation/errors` only — never `core/`.
  */
@@ -42,6 +41,45 @@ export interface MasterPlaylist {
   readonly otherTags: readonly string[];
 }
 
+/** A parsed `#EXT-X-BYTERANGE`, with an absent offset kept as `null`. */
+export interface ByteRange {
+  readonly length: number;
+  readonly offset: number | null;
+}
+
+/** A parsed `#EXT-X-KEY` attribute list. `METHOD=NONE` is represented by `null` on a segment. */
+export interface MediaKey {
+  readonly attributes: Attributes;
+}
+
+/** One `#EXTINF` entry and its media URI. */
+export interface MediaSegment {
+  /** Segment duration in seconds. */
+  readonly duration: number;
+  /** The optional `#EXTINF` title, including an intentionally empty title. */
+  readonly title: string;
+  readonly uri: string;
+  readonly byteRange: ByteRange | null;
+  /** The key in force for this segment, or `null` when it is unencrypted. */
+  readonly key: MediaKey | null;
+  /** Preserved tags immediately preceding this segment, e.g. discontinuities. */
+  readonly tags: readonly string[];
+}
+
+/** The parsed model of an HLS media playlist. */
+export interface MediaPlaylist {
+  readonly version: number | null;
+  readonly targetDuration: number | null;
+  readonly mediaSequence: number | null;
+  readonly playlistType: string | null;
+  readonly segments: readonly MediaSegment[];
+  /** Unrecognised tags before the first segment. */
+  readonly otherTags: readonly string[];
+  /** Unrecognised tags after the last segment, preserved before `#EXT-X-ENDLIST`. */
+  readonly trailingTags: readonly string[];
+  readonly hasEndList: boolean;
+}
+
 /** Options for adding one alternate-audio rendition to a master playlist. */
 export interface AlternateAudioOptions {
   readonly groupId: string;
@@ -70,6 +108,13 @@ export interface AlternateSubtitleOptions {
 const MEDIA_TAG = "#EXT-X-MEDIA:";
 const STREAM_INF_TAG = "#EXT-X-STREAM-INF:";
 const VERSION_TAG = "#EXT-X-VERSION:";
+const TARGET_DURATION_TAG = "#EXT-X-TARGETDURATION:";
+const MEDIA_SEQUENCE_TAG = "#EXT-X-MEDIA-SEQUENCE:";
+const PLAYLIST_TYPE_TAG = "#EXT-X-PLAYLIST-TYPE:";
+const EXTINF_TAG = "#EXTINF:";
+const BYTE_RANGE_TAG = "#EXT-X-BYTERANGE:";
+const KEY_TAG = "#EXT-X-KEY:";
+const ENDLIST_TAG = "#EXT-X-ENDLIST";
 /** Alternate renditions require HLS protocol version ≥ 4. */
 const MIN_ALTERNATE_RENDITION_VERSION = 4;
 
@@ -227,6 +272,238 @@ export function serializeMasterPlaylist(playlist: MasterPlaylist): string {
     lines.push(variant.uri);
   }
   return `${lines.join("\n")}\n`;
+}
+
+/** Parse a non-negative integer playlist field, with a useful typed failure. */
+function parseNonNegativeInteger(value: string, tag: string): number {
+  if (!/^\d+$/.test(value)) {
+    throw new PlaylistParseError(
+      `${tag} must contain a non-negative integer, received "${value}".`,
+    );
+  }
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed)) {
+    throw new PlaylistParseError(`${tag} is outside JavaScript's safe integer range.`);
+  }
+  return parsed;
+}
+
+/** Parse the duration and optional title after `#EXTINF:`. */
+function parseExtinf(value: string): { duration: number; title: string } {
+  const comma = value.indexOf(",");
+  if (comma === -1) {
+    throw new PlaylistParseError('#EXTINF must contain a duration followed by a comma and title.');
+  }
+  const durationText = value.slice(0, comma).trim();
+  const duration = Number(durationText);
+  if (!Number.isFinite(duration) || duration < 0) {
+    throw new PlaylistParseError(`#EXTINF has an invalid duration: "${durationText}".`);
+  }
+  return { duration, title: value.slice(comma + 1) };
+}
+
+/** Parse `length[@offset]` from an `#EXT-X-BYTERANGE` tag. */
+function parseByteRange(value: string): ByteRange {
+  const match = /^(\d+)(?:@(\d+))?$/.exec(value);
+  if (match === null) {
+    throw new PlaylistParseError(`#EXT-X-BYTERANGE is malformed: "${value}".`);
+  }
+  const length = parseNonNegativeInteger(match[1] ?? "", "#EXT-X-BYTERANGE length");
+  const offsetText = match[2];
+  return {
+    length,
+    offset:
+      offsetText === undefined
+        ? null
+        : parseNonNegativeInteger(offsetText, "#EXT-X-BYTERANGE offset"),
+  };
+}
+
+/** Return whether two possibly absent keys have the same ordered attributes. */
+function sameKey(left: MediaKey | null, right: MediaKey | null): boolean {
+  if (left === right) {
+    return true;
+  }
+  if (left === null || right === null || left.attributes.length !== right.attributes.length) {
+    return false;
+  }
+  return left.attributes.every(
+    ([key, value], index) =>
+      right.attributes[index]?.[0] === key && right.attributes[index]?.[1] === value,
+  );
+}
+
+/** Serialize a media playlist model in canonical HLS order. */
+export function serializeMediaPlaylist(playlist: MediaPlaylist): string {
+  const lines: string[] = ["#EXTM3U"];
+  if (playlist.version !== null) {
+    lines.push(`${VERSION_TAG}${playlist.version}`);
+  }
+  if (playlist.targetDuration !== null) {
+    lines.push(`${TARGET_DURATION_TAG}${playlist.targetDuration}`);
+  }
+  if (playlist.mediaSequence !== null) {
+    lines.push(`${MEDIA_SEQUENCE_TAG}${playlist.mediaSequence}`);
+  }
+  if (playlist.playlistType !== null) {
+    lines.push(`${PLAYLIST_TYPE_TAG}${playlist.playlistType}`);
+  }
+  lines.push(...playlist.otherTags);
+
+  let previousKey: MediaKey | null = null;
+  for (const segment of playlist.segments) {
+    if (!sameKey(previousKey, segment.key)) {
+      lines.push(
+        segment.key === null
+          ? `${KEY_TAG}METHOD=NONE`
+          : `${KEY_TAG}${formatAttributeList(segment.key.attributes)}`,
+      );
+      previousKey = segment.key;
+    }
+    lines.push(...segment.tags);
+    lines.push(`${EXTINF_TAG}${segment.duration},${segment.title}`);
+    if (segment.byteRange !== null) {
+      lines.push(
+        `${BYTE_RANGE_TAG}${segment.byteRange.length}${
+          segment.byteRange.offset === null ? "" : `@${segment.byteRange.offset}`
+        }`,
+      );
+    }
+    lines.push(segment.uri);
+  }
+  lines.push(...playlist.trailingTags);
+  if (playlist.hasEndList) {
+    lines.push(ENDLIST_TAG);
+  }
+  return `${lines.join("\n")}\n`;
+}
+
+/**
+ * Parse a media playlist, including segments, byte ranges and the key in force
+ * for each segment. Unknown tags are preserved either globally or alongside the
+ * following segment, so valid playlists can be safely parsed and reserialized.
+ */
+export function parseMediaPlaylist(text: string): MediaPlaylist {
+  const lines = toLines(text);
+  const firstMeaningful = lines.find((line) => line.trim().length > 0)?.trim();
+  if (firstMeaningful !== "#EXTM3U") {
+    throw new PlaylistParseError('Not a valid m3u8: missing "#EXTM3U" header.');
+  }
+
+  let version: number | null = null;
+  let targetDuration: number | null = null;
+  let mediaSequence: number | null = null;
+  let playlistType: string | null = null;
+  let hasEndList = false;
+  let activeKey: MediaKey | null = null;
+  let pendingExtinf: { duration: number; title: string } | null = null;
+  let pendingByteRange: ByteRange | null = null;
+  const otherTags: string[] = [];
+  const pendingTags: string[] = [];
+  const segments: MediaSegment[] = [];
+
+  for (const sourceLine of lines) {
+    const line = sourceLine.trim();
+    if (line.length === 0 || line === "#EXTM3U") {
+      continue;
+    }
+    if (hasEndList) {
+      throw new PlaylistParseError("Playlist contains content after #EXT-X-ENDLIST.");
+    }
+    if (line.startsWith(VERSION_TAG)) {
+      version = parseNonNegativeInteger(line.slice(VERSION_TAG.length), "#EXT-X-VERSION");
+      continue;
+    }
+    if (line.startsWith(TARGET_DURATION_TAG)) {
+      targetDuration = parseNonNegativeInteger(
+        line.slice(TARGET_DURATION_TAG.length),
+        "#EXT-X-TARGETDURATION",
+      );
+      continue;
+    }
+    if (line.startsWith(MEDIA_SEQUENCE_TAG)) {
+      mediaSequence = parseNonNegativeInteger(
+        line.slice(MEDIA_SEQUENCE_TAG.length),
+        "#EXT-X-MEDIA-SEQUENCE",
+      );
+      continue;
+    }
+    if (line.startsWith(PLAYLIST_TYPE_TAG)) {
+      playlistType = line.slice(PLAYLIST_TYPE_TAG.length);
+      if (playlistType.length === 0) {
+        throw new PlaylistParseError("#EXT-X-PLAYLIST-TYPE cannot be empty.");
+      }
+      continue;
+    }
+    if (line.startsWith(KEY_TAG)) {
+      const attributes = parseAttributeList(line.slice(KEY_TAG.length));
+      const method = getAttribute(attributes, "METHOD");
+      if (method === undefined) {
+        throw new PlaylistParseError("#EXT-X-KEY must include METHOD.");
+      }
+      activeKey = method === "NONE" ? null : { attributes };
+      continue;
+    }
+    if (line.startsWith(EXTINF_TAG)) {
+      if (pendingExtinf !== null) {
+        throw new PlaylistParseError("#EXTINF has no following segment URI.");
+      }
+      pendingExtinf = parseExtinf(line.slice(EXTINF_TAG.length));
+      continue;
+    }
+    if (line.startsWith(BYTE_RANGE_TAG)) {
+      if (pendingExtinf === null || pendingByteRange !== null) {
+        throw new PlaylistParseError(
+          "#EXT-X-BYTERANGE must appear once after #EXTINF and before its URI.",
+        );
+      }
+      pendingByteRange = parseByteRange(line.slice(BYTE_RANGE_TAG.length));
+      continue;
+    }
+    if (line === ENDLIST_TAG) {
+      if (pendingExtinf !== null) {
+        throw new PlaylistParseError("#EXTINF has no following segment URI.");
+      }
+      hasEndList = true;
+      continue;
+    }
+    if (line.startsWith("#")) {
+      if (segments.length === 0 && pendingExtinf === null) {
+        otherTags.push(line);
+      } else {
+        pendingTags.push(line);
+      }
+      continue;
+    }
+    if (pendingExtinf === null) {
+      throw new PlaylistParseError(`Unexpected segment URI without #EXTINF: "${line}".`);
+    }
+    segments.push({
+      duration: pendingExtinf.duration,
+      title: pendingExtinf.title,
+      uri: line,
+      byteRange: pendingByteRange,
+      key: activeKey,
+      tags: [...pendingTags],
+    });
+    pendingExtinf = null;
+    pendingByteRange = null;
+    pendingTags.length = 0;
+  }
+
+  if (pendingExtinf !== null) {
+    throw new PlaylistParseError("#EXTINF has no following segment URI.");
+  }
+  return {
+    version,
+    targetDuration,
+    mediaSequence,
+    playlistType,
+    segments,
+    otherTags,
+    trailingTags: pendingTags,
+    hasEndList,
+  };
 }
 
 /** Whether a variant advertises muxed AAC audio in its `CODECS` attribute. */

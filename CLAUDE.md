@@ -303,7 +303,7 @@ The standing checklist of real-world input concerns (extend as you find more):
 
 ## Status
 
-**Phases 0 – 6 complete.** VHJS transcodes video to adaptive-bitrate HLS
+**Phases 0 – 7 complete.** VHJS transcodes video to adaptive-bitrate HLS
 end-to-end and now handles audio features (extract/demux + alternate-audio
 packaging), verified on real FFmpeg (8.1.2). Highlights on top of the Phase 0–1
 foundation (ports + fakes, branded types, `process`/`binaries`/`ffprobe`
@@ -361,20 +361,22 @@ adapters):
   is converted on ingest through `-c:s webvtt`. Repeated calls sharing a
   `groupId` create multi-language groups; `FORCED`, `DEFAULT`, and `AUTOSELECT`
   are exposed. Missing streams fail early with typed `NoSubtitleTrackError`.
-- **Playlist** (`hls/playlist.ts`, pure — *pulled forward from Phase 7*): master
-  `.m3u8` `parseMasterPlaylist`/`serializeMasterPlaylist` (attribute values kept
-  verbatim for loss-free round-trip), `addAlternateAudio` / `addAlternateSubtitle`
-  patches (preserve existing renditions, bump `EXT-X-VERSION` ≥ 4), and
-  `sumMediaPlaylistDurationMs`
-  (`#EXTINF` summer). Malformed input → `PlaylistParseError`.
+- **Playlist** (`hls/playlist.ts`, pure): master `.m3u8`
+  `parseMasterPlaylist`/`serializeMasterPlaylist` (attribute values kept verbatim
+  for loss-free round-trip), media `parseMediaPlaylist`/`serializeMediaPlaylist`
+  (segments, byte ranges, inherited/reset keys, and preserved unfamiliar tags),
+  `addAlternateAudio` / `addAlternateSubtitle` patches (preserve existing
+  renditions, bump `EXT-X-VERSION` ≥ 4), and `sumMediaPlaylistDurationMs`.
+  Malformed input → `PlaylistParseError`.
 
 > Note: the arg-builder lives in `hls/command.ts` (a pure *decision*), not
 > `core/ffmpeg.ts`, per the mandatory "decision in the domain, I/O in an adapter"
 > rule — so the inner layer never imports `core/`. `core/ffmpeg.ts` is now just
 > the runner. This refines the target-layout table above.
 
-All green: `typecheck` / `lint` / `test:cov` (**252 unit tests, 100% lines/
-functions, 94.32% branch**, no live FFmpeg) / `build` (`.mjs` + `.d.mts`) / `example`
+Before the Phase 7 media-playlist additions, `typecheck` / `lint` / `test:cov`
+(**252 unit tests, 100% lines/functions, 94.32% branch**, no live FFmpeg) /
+`build` (`.mjs` + `.d.mts`) / `example`
 (probe, basic-hls, abr-ladder, progress-events, dry-run, **extract-audio**,
 **add-audio-track**, **add-subtitles**) / **`test:e2e`** (real FFmpeg 8.1.2: base transcode,
 rotated-source-stays-portrait, upscale-rejected, robustness set, **audio
@@ -386,5 +388,5 @@ resolves from PATH or `VHJS_FFMPEG_PATH` / `VHJS_FFPROBE_PATH`.
 > audio-less); `examples/_env.ts` `audioSampleInput()` defaults to `mobile.mkv`,
 > overridable via `VHJS_SAMPLE_AUDIO`.
 
-Next: the rest of **Phase 7** — full media-playlist parsing (segments,
-byte-ranges, keys). See `TODO.md`.
+Next: **Phase 8** — framework recipes and progress streaming examples. See
+`TODO.md`.

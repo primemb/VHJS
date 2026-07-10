@@ -6,7 +6,9 @@ import {
   formatAttributeList,
   getAttribute,
   parseAttributeList,
+  parseMediaPlaylist,
   parseMasterPlaylist,
+  serializeMediaPlaylist,
   serializeMasterPlaylist,
   sumMediaPlaylistDurationMs,
   unquote,
@@ -42,6 +44,29 @@ const MEDIA = [
   "data000.ts",
   "#EXTINF:4.500000,",
   "data001.ts",
+  "#EXT-X-ENDLIST",
+  "",
+].join("\n");
+
+const MEDIA_WITH_RANGES_AND_KEYS = [
+  "#EXTM3U",
+  "#EXT-X-VERSION:4",
+  "#EXT-X-TARGETDURATION:8",
+  "#EXT-X-MEDIA-SEQUENCE:42",
+  "#EXT-X-PLAYLIST-TYPE:VOD",
+  "#EXT-X-INDEPENDENT-SEGMENTS",
+  '#EXT-X-KEY:METHOD=AES-128,URI="keys/first.key",IV=0x1',
+  "#EXTINF:6.5,Opening",
+  "#EXT-X-BYTERANGE:1000@20",
+  "media.ts",
+  "#EXT-X-DISCONTINUITY",
+  "#EXTINF:4,",
+  "#EXT-X-BYTERANGE:900",
+  "media.ts",
+  "#EXT-X-KEY:METHOD=NONE",
+  "#EXTINF:3.25,Closing",
+  "clear.ts",
+  "#EXT-X-PROGRAM-DATE-TIME:2025-01-01T00:00:00.000Z",
   "#EXT-X-ENDLIST",
   "",
 ].join("\n");
@@ -348,5 +373,88 @@ describe("sumMediaPlaylistDurationMs", () => {
 
   it("returns 0 for a playlist with no segments", () => {
     expect(sumMediaPlaylistDurationMs("#EXTM3U\n#EXT-X-ENDLIST")).toBe(0);
+  });
+});
+
+describe("parseMediaPlaylist", () => {
+  it("models media fields, segments, byte ranges, keys and segment tags", () => {
+    const playlist = parseMediaPlaylist(MEDIA_WITH_RANGES_AND_KEYS);
+    expect(playlist).toMatchObject({
+      version: 4,
+      targetDuration: 8,
+      mediaSequence: 42,
+      playlistType: "VOD",
+      otherTags: ["#EXT-X-INDEPENDENT-SEGMENTS"],
+      trailingTags: ["#EXT-X-PROGRAM-DATE-TIME:2025-01-01T00:00:00.000Z"],
+      hasEndList: true,
+    });
+    expect(playlist.segments).toHaveLength(3);
+    expect(playlist.segments[0]).toMatchObject({
+      duration: 6.5,
+      title: "Opening",
+      uri: "media.ts",
+      byteRange: { length: 1000, offset: 20 },
+      key: { attributes: [["METHOD", "AES-128"], ["URI", '"keys/first.key"'], ["IV", "0x1"]] },
+    });
+    expect(playlist.segments[1]?.byteRange).toEqual({ length: 900, offset: null });
+    expect(playlist.segments[1]?.tags).toEqual(["#EXT-X-DISCONTINUITY"]);
+    expect(playlist.segments[2]?.key).toBeNull();
+  });
+
+  it("round-trips a media playlist through its canonical serializer", () => {
+    const parsed = parseMediaPlaylist(MEDIA_WITH_RANGES_AND_KEYS);
+    expect(parseMediaPlaylist(serializeMediaPlaylist(parsed))).toEqual(parsed);
+  });
+
+  it("handles CRLF line endings", () => {
+    expect(parseMediaPlaylist(MEDIA.replace(/\n/g, "\r\n")).segments).toHaveLength(2);
+  });
+
+  it("serializes sparse live playlists and avoids repeating an unchanged key", () => {
+    const key = { attributes: [["METHOD", "AES-128"], ["URI", '"key.bin"']] as const };
+    const text = serializeMediaPlaylist({
+      version: null,
+      targetDuration: null,
+      mediaSequence: null,
+      playlistType: null,
+      otherTags: [],
+      trailingTags: [],
+      hasEndList: false,
+      segments: [
+        { duration: 1, title: "", uri: "one.ts", byteRange: null, key, tags: [] },
+        {
+          duration: 1,
+          title: "",
+          uri: "two.ts",
+          byteRange: null,
+          key: { attributes: [["METHOD", "AES-128"], ["URI", '"key.bin"']] },
+          tags: [],
+        },
+        { duration: 1, title: "", uri: "three.ts", byteRange: null, key: null, tags: [] },
+      ],
+    });
+    expect(text).toBe(
+      '#EXTM3U\n#EXT-X-KEY:METHOD=AES-128,URI="key.bin"\n#EXTINF:1,\none.ts\n#EXTINF:1,\ntwo.ts\n#EXT-X-KEY:METHOD=NONE\n#EXTINF:1,\nthree.ts\n',
+    );
+  });
+
+  it.each([
+    ["not a playlist", 'missing "#EXTM3U" header'],
+    ["#EXT-X-VERSION:not-a-number", "#EXT-X-VERSION"],
+    ["#EXT-X-PLAYLIST-TYPE:", "#EXT-X-PLAYLIST-TYPE"],
+    ["#EXTINF:abc,\nsegment.ts", "#EXTINF"],
+    ["#EXTINF:-1,\nsegment.ts", "#EXTINF"],
+    ["#EXTINF:1\nsegment.ts", "#EXTINF"],
+    ["#EXT-X-BYTERANGE:100\nsegment.ts", "#EXT-X-BYTERANGE"],
+    ["#EXTINF:1,\n#EXT-X-BYTERANGE:nope\nsegment.ts", "#EXT-X-BYTERANGE"],
+    ["#EXTINF:1,\n#EXT-X-BYTERANGE:1\n#EXT-X-BYTERANGE:2\nsegment.ts", "#EXT-X-BYTERANGE"],
+    ["#EXT-X-KEY:URI=key.bin\n#EXTINF:1,\nsegment.ts", "#EXT-X-KEY"],
+    ["#EXTINF:1,", "#EXTINF"],
+    ["#EXTINF:1,\n#EXTINF:2,\nsegment.ts", "#EXTINF"],
+    ["orphan.ts", "Unexpected segment URI"],
+    ["#EXT-X-ENDLIST\n#EXTINF:1,\nsegment.ts", "after #EXT-X-ENDLIST"],
+  ])("rejects malformed media input: %s", (body, message) => {
+    const text = body === "not a playlist" ? body : `#EXTM3U\n${body}`;
+    expect(() => parseMediaPlaylist(text)).toThrow(message);
   });
 });
