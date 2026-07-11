@@ -9,7 +9,6 @@
 import { randomUUID } from "node:crypto";
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
-import express from "express";
 import {
   createVhjs,
   isDryRun,
@@ -17,6 +16,7 @@ import {
   type TranscodeJob,
   type TranscodeOutcome,
 } from "@primemb/vhjs";
+import express from "express";
 
 const app = express();
 const client = createVhjs();

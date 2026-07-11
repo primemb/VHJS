@@ -10,8 +10,8 @@ import { randomUUID } from "node:crypto";
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import fastifyStatic from "@fastify/static";
-import fastify from "fastify";
 import { createVhjs } from "@primemb/vhjs";
+import fastify from "fastify";
 
 const app = fastify();
 const client = createVhjs();
