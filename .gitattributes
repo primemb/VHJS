@@ -1,0 +1,2 @@
+# Keep formatter-sensitive text files LF on every checkout, including Windows CI.
+* text=auto eol=lf

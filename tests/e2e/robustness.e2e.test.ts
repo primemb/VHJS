@@ -24,10 +24,11 @@
  */
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { createBinaryVerifier } from "../../src/core/binaries.js";
 import { createProcessRunner } from "../../src/core/process.js";
+import { parseMediaPlaylist } from "../../src/hls/playlist.js";
 import { isDryRun } from "../../src/hls/transcoder.js";
 import { createVhjs, type Rendition, type VhjsOptions } from "../../src/index.js";
 import { asBitrate, asPixels } from "../../src/types/brands.js";
@@ -54,7 +55,7 @@ interface ProbedStream {
  * `[PROGRAM]`), so we de-duplicate by `index` to get the real stream set.
  */
 async function probeStreams(path: string): Promise<ProbedStream[]> {
-  const { stdout } = await run(ffprobePath, {
+  const { exitCode, stderr, stdout } = await run(ffprobePath, {
     args: [
       "-v",
       "error",
@@ -65,6 +66,9 @@ async function probeStreams(path: string): Promise<ProbedStream[]> {
       path,
     ],
   });
+  if (exitCode !== 0) {
+    throw new Error(`ffprobe failed for ${path} (exit ${exitCode}): ${stderr.trim()}`);
+  }
   const parsed = JSON.parse(stdout) as {
     streams?: { index?: number; codec_type?: string; codec_name?: string; channels?: number }[];
   };
@@ -77,6 +81,16 @@ async function probeStreams(path: string): Promise<ProbedStream[]> {
     });
   }
   return [...byIndex.values()];
+}
+
+/** Resolve the first segment named by an emitted media playlist. */
+async function firstSegmentPath(playlistPath: string): Promise<string> {
+  const playlist = parseMediaPlaylist(await readFile(playlistPath, "utf8"));
+  const segment = playlist.segments[0];
+  if (segment === undefined) {
+    throw new Error(`expected ${playlistPath} to contain at least one segment`);
+  }
+  return resolve(dirname(playlistPath), segment.uri);
 }
 
 /** Generate a synthetic input clip with ffmpeg; throws if generation fails. */
@@ -138,7 +152,7 @@ describe.skipIf(!available)("e2e: real-world input robustness", () => {
     });
     if (isDryRun(result)) throw new Error("expected a real run");
 
-    const segment = join(dirname(result.renditions[0]?.playlistPath ?? ""), "data000.ts");
+    const segment = await firstSegmentPath(result.renditions[0]?.playlistPath ?? "");
     const streams = await probeStreams(segment);
     expect(streams.find((s) => s.type === "video")?.codec).toBe("h264");
     expect(streams.find((s) => s.type === "audio")?.codec).toBe("aac");
@@ -168,7 +182,7 @@ describe.skipIf(!available)("e2e: real-world input robustness", () => {
     const master = await readFile(result.masterPlaylistPath, "utf8");
     expect(master).toContain("#EXT-X-STREAM-INF");
 
-    const segment = join(dirname(result.renditions[0]?.playlistPath ?? ""), "data000.ts");
+    const segment = await firstSegmentPath(result.renditions[0]?.playlistPath ?? "");
     const streams = await probeStreams(segment);
     expect(streams.some((s) => s.type === "video")).toBe(true);
     expect(streams.some((s) => s.type === "audio")).toBe(false);
@@ -202,7 +216,7 @@ describe.skipIf(!available)("e2e: real-world input robustness", () => {
     });
     if (isDryRun(result)) throw new Error("expected a real run");
 
-    const segment = join(dirname(result.renditions[0]?.playlistPath ?? ""), "data000.ts");
+    const segment = await firstSegmentPath(result.renditions[0]?.playlistPath ?? "");
     const streams = await probeStreams(segment);
     expect(streams.find((s) => s.type === "audio")?.channels).toBe(2);
   });

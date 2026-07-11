@@ -17,6 +17,7 @@ import { fileURLToPath } from "node:url";
 import { afterAll, describe, expect, it } from "vitest";
 import { createBinaryVerifier } from "../../src/core/binaries.js";
 import { createProcessRunner } from "../../src/core/process.js";
+import { parseMediaPlaylist } from "../../src/hls/playlist.js";
 import { isDryRun } from "../../src/hls/transcoder.js";
 import { createVhjs, type Rendition, type VhjsOptions } from "../../src/index.js";
 import { asBitrate, asPixels } from "../../src/types/brands.js";
@@ -25,7 +26,7 @@ const run = createProcessRunner();
 
 /** Probe one output file's first video stream dimensions with real ffprobe. */
 async function videoSize(path: string): Promise<{ width: number; height: number }> {
-  const { stdout } = await run(ffprobePath, {
+  const { exitCode, stderr, stdout } = await run(ffprobePath, {
     args: [
       "-v",
       "error",
@@ -38,10 +39,23 @@ async function videoSize(path: string): Promise<{ width: number; height: number 
       path,
     ],
   });
+  if (exitCode !== 0) {
+    throw new Error(`ffprobe failed for ${path} (exit ${exitCode}): ${stderr.trim()}`);
+  }
   // mpegts (.ts) reports the stream twice (once under [PROGRAM]); take line one.
   const firstLine = stdout.trim().split(/\r?\n/)[0] ?? "";
   const [width, height] = firstLine.split(",").map(Number);
   return { width: width ?? 0, height: height ?? 0 };
+}
+
+/** Resolve the first segment named by an emitted media playlist. */
+async function firstSegmentPath(playlistPath: string): Promise<string> {
+  const playlist = parseMediaPlaylist(await readFile(playlistPath, "utf8"));
+  const segment = playlist.segments[0];
+  if (segment === undefined) {
+    throw new Error(`expected ${playlistPath} to contain at least one segment`);
+  }
+  return resolve(dirname(playlistPath), segment.uri);
 }
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -126,7 +140,7 @@ describe.skipIf(!available)("e2e: transcodeToHls against real FFmpeg", () => {
       expect(media).toContain("#EXTINF");
       expect(media).toContain(".ts");
 
-      const firstSegment = join(dirname(rendition.playlistPath), "data000.ts");
+      const firstSegment = await firstSegmentPath(rendition.playlistPath);
       expect(await exists(firstSegment)).toBe(true);
     }
 
@@ -187,7 +201,7 @@ describe.skipIf(!available)("e2e: transcodeToHls against real FFmpeg", () => {
 
       // Probe the first emitted segment: it must be PORTRAIT (width < height).
       // A double-rotation or a dropped rotation would come out landscape here.
-      const segment = join(dirname(result.renditions[0]?.playlistPath ?? ""), "data000.ts");
+      const segment = await firstSegmentPath(result.renditions[0]?.playlistPath ?? "");
       const { width, height } = await videoSize(segment);
       expect(height).toBe(480);
       expect(width).toBeLessThan(height);
