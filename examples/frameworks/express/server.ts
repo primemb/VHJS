@@ -2,7 +2,7 @@
  * Express + VHJS: asynchronous transcodes, SSE progress, and static HLS files.
  *
  * In a separate Express app:
- *   pnpm add express vhjs
+ *   pnpm add express @primemb/vhjs
  *   pnpm add -D @types/express typescript tsx
  *   npx tsx server.ts
  */
@@ -16,7 +16,7 @@ import {
   type ProgressEvent,
   type TranscodeJob,
   type TranscodeOutcome,
-} from "vhjs";
+} from "@primemb/vhjs";
 
 const app = express();
 const client = createVhjs();

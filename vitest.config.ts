@@ -29,7 +29,7 @@ export default defineConfig({
   resolve: {
     alias: {
       // Let tests import the package by name, resolved to source.
-      vhjs: new URL("./src/index.ts", import.meta.url).pathname,
+      "@primemb/vhjs": new URL("./src/index.ts", import.meta.url).pathname,
     },
   },
 });

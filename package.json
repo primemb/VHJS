@@ -1,5 +1,5 @@
 {
-  "name": "vhjs",
+  "name": "@primemb/vhjs",
   "version": "0.1.0",
   "description": "TypeScript-first, framework-agnostic library that turns any video into adaptive-bitrate HLS on top of FFmpeg — probe-first, fail-typed.",
   "keywords": [

@@ -8,7 +8,7 @@ import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { BadRequestException, Body, Controller, Injectable, Module, Post } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
-import { createVhjs } from "vhjs";
+import { createVhjs } from "@primemb/vhjs";
 
 const hlsRoot = resolve(process.cwd(), "hls-output");
 

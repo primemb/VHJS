@@ -15,7 +15,7 @@ and `ffprobe -version`.
 ## Install
 
 ```bash
-pnpm add vhjs
+pnpm add @primemb/vhjs
 ```
 
 ## Quickstart
@@ -24,7 +24,7 @@ Create one client and reuse it. Binary paths are resolved and verified on the
 first operation, then shared by the client.
 
 ```ts
-import { asBitrate, asPixels, createVhjs, type Rendition } from "vhjs";
+import { asBitrate, asPixels, createVhjs, type Rendition } from "@primemb/vhjs";
 
 const video = createVhjs();
 const rendition = (height: number, video: number, audio: number): Rendition => ({
@@ -83,7 +83,7 @@ ladder. Common optional fields are `segmentDuration`, `masterPlaylistName`,
 `onProgress`, and `dryRun`.
 
 ```ts
-import { asFrameRate, createVhjs } from "vhjs";
+import { asFrameRate, createVhjs } from "@primemb/vhjs";
 
 const video = createVhjs({ ffmpegPath: "/opt/ffmpeg" });
 await video.transcodeToHls({

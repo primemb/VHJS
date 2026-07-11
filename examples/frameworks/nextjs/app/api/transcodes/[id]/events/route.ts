@@ -1,4 +1,4 @@
-import { isDryRun, type ProgressEvent, type TranscodeOutcome } from "vhjs";
+import { isDryRun, type ProgressEvent, type TranscodeOutcome } from "@primemb/vhjs";
 import { getTranscode } from "../../../../../lib/vhjs-jobs.js";
 
 export const runtime = "nodejs";

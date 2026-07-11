@@ -3,7 +3,7 @@
  *
  * Run: `pnpm example 07-progress-events`
  */
-import { createVhjs, isDryRun } from "vhjs";
+import { createVhjs, isDryRun } from "@primemb/vhjs";
 import { binaryOptions, outputDir, sampleInput } from "./_env.js";
 
 const client = createVhjs(binaryOptions());

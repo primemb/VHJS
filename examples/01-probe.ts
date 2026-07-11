@@ -3,7 +3,7 @@
  *
  * Run: `pnpm example 01-probe`
  */
-import { createVhjs } from "vhjs";
+import { createVhjs } from "@primemb/vhjs";
 import { binaryOptions, sampleInput } from "./_env.js";
 
 // Configure once; reuse the instance for every probe/transcode call.

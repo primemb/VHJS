@@ -3,7 +3,7 @@
  *
  * Run: `pnpm example 03-abr-ladder`
  */
-import { createVhjs, isDryRun } from "vhjs";
+import { createVhjs, isDryRun } from "@primemb/vhjs";
 import { binaryOptions, outputDir, sampleInput } from "./_env.js";
 
 const vhjs = createVhjs(binaryOptions());

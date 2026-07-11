@@ -16,7 +16,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      vhjs: new URL("./src/index.ts", import.meta.url).pathname,
+      "@primemb/vhjs": new URL("./src/index.ts", import.meta.url).pathname,
     },
   },
 });

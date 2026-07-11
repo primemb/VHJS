@@ -2,7 +2,7 @@
  * Example runner used by `pnpm example <name>`.
  *
  * Resolves a bare example name (e.g. `00-hello` or `03-abr-ladder`) to
- * `examples/<name>.ts` and imports it. Examples import VHJS by name (`vhjs`),
+ * `examples/<name>.ts` and imports it by its published name (`@primemb/vhjs`),
  * which tsx resolves to `src/index.ts` via tsconfig `paths` — so they run
  * against the live source, not a built package.
  */

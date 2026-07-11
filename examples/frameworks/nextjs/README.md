@@ -5,7 +5,7 @@ Router application. The `public/hls/` directory is created at runtime and is
 served by Next.js as `/hls/...`; add it to `.gitignore`.
 
 ```bash
-pnpm add next react react-dom vhjs
+pnpm add next react react-dom @primemb/vhjs
 ```
 
 Start a job with `POST /api/transcodes` and connect an `EventSource` to

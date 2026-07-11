@@ -4,7 +4,7 @@
  * This is pure playlist work: it needs no FFmpeg or media files.
  * Run: `pnpm example 09-playlist-manipulation`
  */
-import { parseMediaPlaylist, serializeMediaPlaylist } from "vhjs";
+import { parseMediaPlaylist, serializeMediaPlaylist } from "@primemb/vhjs";
 
 const playlistText = [
   "#EXTM3U",

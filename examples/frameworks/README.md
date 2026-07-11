@@ -1,15 +1,15 @@
 # VHJS framework recipes
 
 These recipes show the boundary between an HTTP application and VHJS. They are
-not part of the `vhjs` package and they do not add a framework dependency to the
+not part of the `@primemb/vhjs` package and they do not add a framework dependency to the
 library. Copy the recipe for the framework already used by your application.
 
 | Recipe | Install in the host application | What it demonstrates |
 | --- | --- | --- |
-| [`express/server.ts`](./express/server.ts) | `pnpm add express vhjs` | JSON API, SSE progress, static HLS files |
-| [`fastify/server.ts`](./fastify/server.ts) | `pnpm add fastify @fastify/static vhjs` | JSON API and static HLS files |
-| [`nestjs/main.ts`](./nestjs/main.ts) | `pnpm add @nestjs/common @nestjs/core @nestjs/platform-express reflect-metadata rxjs vhjs` | provider/controller split and static HLS files |
-| [`nextjs/`](./nextjs) | `pnpm add next react react-dom vhjs` | App Router API routes, SSE progress, public HLS files |
+| [`express/server.ts`](./express/server.ts) | `pnpm add express @primemb/vhjs` | JSON API, SSE progress, static HLS files |
+| [`fastify/server.ts`](./fastify/server.ts) | `pnpm add fastify @fastify/static @primemb/vhjs` | JSON API and static HLS files |
+| [`nestjs/main.ts`](./nestjs/main.ts) | `pnpm add @nestjs/common @nestjs/core @nestjs/platform-express reflect-metadata rxjs @primemb/vhjs` | provider/controller split and static HLS files |
+| [`nextjs/`](./nextjs) | `pnpm add next react react-dom @primemb/vhjs` | App Router API routes, SSE progress, public HLS files |
 
 The TypeScript project intentionally excludes this directory from its root
 typecheck: each recipe imports optional dependencies belonging to the consuming

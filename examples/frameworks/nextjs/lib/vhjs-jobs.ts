@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
-import { createVhjs, type TranscodeJob, type TranscodeOutcome } from "vhjs";
+import { createVhjs, type TranscodeJob, type TranscodeOutcome } from "@primemb/vhjs";
 
 const hlsRoot = resolve(process.cwd(), "public", "hls");
 const client = createVhjs();

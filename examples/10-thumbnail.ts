@@ -4,7 +4,7 @@
  *
  * Run: `pnpm example 10-thumbnail`
  */
-import { createVhjs, isThumbnailDryRun } from "vhjs";
+import { createVhjs, isThumbnailDryRun } from "@primemb/vhjs";
 import { binaryOptions, outputDir, sampleInput } from "./_env.js";
 
 const vhjs = createVhjs(binaryOptions());

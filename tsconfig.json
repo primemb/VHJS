@@ -29,7 +29,7 @@
        (paths are relative to this config file in TS 5+; no baseUrl needed).
        Not used by the published build (tsup emits real paths into dist/). */
     "paths": {
-      "vhjs": ["./src/index.ts"]
+      "@primemb/vhjs": ["./src/index.ts"]
     }
   },
   "include": ["src", "tests", "examples", "*.config.ts"],

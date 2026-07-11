@@ -3,7 +3,14 @@
  *
  * Run: `pnpm example 02-basic-hls`
  */
-import { asBitrate, asFrameRate, asPixels, createVhjs, isDryRun, type Rendition } from "vhjs";
+import {
+  asBitrate,
+  asFrameRate,
+  asPixels,
+  createVhjs,
+  isDryRun,
+  type Rendition,
+} from "@primemb/vhjs";
 import { binaryOptions, outputDir, sampleInput } from "./_env.js";
 
 const rendition: Rendition = {

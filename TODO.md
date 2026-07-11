@@ -30,7 +30,7 @@ A task is not done until all of these hold — no exceptions:
 - [x] FFmpeg strategy decided: **system `PATH` + user override** (no bundled static binary).
 - [x] CI (GitHub Actions): matrix over OS (win/mac/linux) — typecheck + lint + tests + coverage; separate FFmpeg-provisioned `e2e` job. (`.github/workflows/ci.yml`)
 
-> Decisions locked this phase: **MIT** license; npm name **`vhjs`**; build tool **`tsdown`** (not `tsup`).
+> Decisions locked this phase: **MIT** license; npm name **`@primemb/vhjs`**; build tool **`tsdown`** (not `tsup`).
 > Note: install must approve esbuild's build script — pnpm 11 uses `allowBuilds:` in `pnpm-workspace.yaml`.
 
 ## Phase 0.5 — Ports & test harness 🔴 ✅
@@ -222,5 +222,5 @@ A task is not done until all of these hold — no exceptions:
 - [x] Default codecs: **H.264 + AAC** (others opt-in later).
 - [x] Bitrate near source: **clamp + warn** (hard error only when clearly above).
 - [x] License: **MIT**.
-- [x] Package/npm name: **`vhjs`** (lowercased from `VHJS`).
+- [x] Package/npm name: **`@primemb/vhjs`** (scoped under `primemb`).
 - [x] Build tool: **`tsdown`** (Rolldown-based successor to `tsup`).

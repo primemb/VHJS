@@ -11,7 +11,7 @@
  */
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { VhjsOptions } from "vhjs";
+import type { VhjsOptions } from "@primemb/vhjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 

@@ -7,7 +7,7 @@
  * Run: `pnpm example 04-extract-audio`
  */
 import { join } from "node:path";
-import { createVhjs, isAudioDryRun } from "vhjs";
+import { createVhjs, isAudioDryRun } from "@primemb/vhjs";
 import { audioSampleInput, binaryOptions, outputDir } from "./_env.js";
 
 const vhjs = createVhjs(binaryOptions());

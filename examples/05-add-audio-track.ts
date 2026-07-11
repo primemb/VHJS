@@ -8,7 +8,7 @@
  * Run: `pnpm example 05-add-audio-track`
  */
 import { readFile } from "node:fs/promises";
-import { createVhjs, isAudioDryRun, isDryRun } from "vhjs";
+import { createVhjs, isAudioDryRun, isDryRun } from "@primemb/vhjs";
 import { audioSampleInput, binaryOptions, outputDir } from "./_env.js";
 
 const vhjs = createVhjs(binaryOptions());

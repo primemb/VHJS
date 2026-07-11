@@ -2,7 +2,7 @@
  * Fastify + VHJS: asynchronous transcodes and static HLS files.
  *
  * In a separate Fastify app:
- *   pnpm add fastify @fastify/static vhjs
+ *   pnpm add fastify @fastify/static @primemb/vhjs
  *   pnpm add -D typescript tsx
  *   npx tsx server.ts
  */
@@ -11,7 +11,7 @@ import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import fastifyStatic from "@fastify/static";
 import fastify from "fastify";
-import { createVhjs } from "vhjs";
+import { createVhjs } from "@primemb/vhjs";
 
 const app = fastify();
 const client = createVhjs();

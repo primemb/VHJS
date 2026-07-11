@@ -7,7 +7,7 @@
  */
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { createVhjs, isDryRun, isSubtitleDryRun } from "vhjs";
+import { createVhjs, isDryRun, isSubtitleDryRun } from "@primemb/vhjs";
 import { binaryOptions, outputDir, sampleInput } from "./_env.js";
 
 const vhjs = createVhjs(binaryOptions());

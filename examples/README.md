@@ -8,7 +8,7 @@ This folder has two jobs:
 2. **Usage docs** — once the API stabilizes, these double as copy-paste examples
    showing people how to use VHJS.
 
-> Examples import VHJS from the workspace (e.g. `import { transcodeToHls } from 'vhjs'`
+> Examples import VHJS from the workspace (e.g. `import { transcodeToHls } from '@primemb/vhjs'`
 > resolved via the pnpm workspace / path alias), so changes to `src/` are picked
 > up immediately. They are **not** shipped in the published npm package.
 
@@ -77,7 +77,7 @@ all recipes serve completed HLS packages from a dedicated output root.
 ## Two ways to call the API
 
 ```ts
-import { createVhjs, probe, transcodeToHls } from "vhjs";
+import { createVhjs, probe, transcodeToHls } from "@primemb/vhjs";
 
 // Preferred: configure once (binaries resolved a single time), reuse the instance.
 const vhjs = createVhjs({ ffmpegPath: "/opt/ffmpeg" });
@@ -92,7 +92,7 @@ await transcodeToHls({ input: "in.mp4", outputDir: "out" });
 ## Fluent jobs and streaming progress
 
 ```ts
-import { createVhjs, vhjs } from "vhjs";
+import { createVhjs, vhjs } from "@primemb/vhjs";
 
 // Optional fluent builder. With no `.rendition()`, VHJS auto-derives the ladder.
 await vhjs("in.mp4").output("out").run();
@@ -128,7 +128,7 @@ presets are `ultrafast` through `placebo`; VHJS validates both settings before
 FFmpeg runs.
 
 ```ts
-import { asFrameRate, createVhjs } from "vhjs";
+import { asFrameRate, createVhjs } from "@primemb/vhjs";
 
 const client = createVhjs();
 await client.transcodeToHls({
