@@ -27,6 +27,10 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm test:cov
+      # These examples have no FFmpeg/media dependency and guard their public API
+      # imports plus playlist usage from silently drifting.
+      - run: pnpm example 00-hello
+      - run: pnpm example 09-playlist-manipulation
 
   # Opt-in end-to-end job: real FFmpeg on tiny fixture clips.
   e2e:
@@ -44,5 +48,4 @@ jobs:
         uses: FedericoCarboni/setup-ffmpeg@v3
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
-      # e2e suite is added in Phase 3; placeholder keeps the job wired.
-      - run: pnpm test
+      - run: pnpm test:e2e

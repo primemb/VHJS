@@ -1,74 +1,212 @@
 # VHJS
 
-> **Video-HLS-JS** — a TypeScript-first, framework-agnostic Node.js library that
-> turns any video into **adaptive-bitrate HLS** on top of FFmpeg. Probe-first,
-> fail-typed, streaming-friendly.
-
-> ⚠️ **Status: early development (0.1.0).** The pipeline is being built phase by
-> phase — see [`TODO.md`](TODO.md). APIs may change until 1.0.
-
-## What it does
-
-- **Transcode to HLS** — generate an ABR ladder (multiple resolution/bitrate
-  renditions) with a master `.m3u8`.
-- **Extract / "spread" audio** from a video into its own rendition or file.
-- **Add alternate audio tracks** (extra languages, commentary) to an existing
-  HLS package as `EXT-X-MEDIA` renditions.
-- **Add WebVTT subtitles** to an existing HLS package.
-- **Control encoding** — resolution, video/audio bitrate, codec, segment length.
-- **Validate against the source** — a rendition that upscales resolution or
-  exceeds the source bitrate is rejected with a **typed error** before FFmpeg
-  runs.
+**VHJS** is a TypeScript-first, framework-agnostic Node.js library for turning
+video into adaptive-bitrate HLS with FFmpeg. It probes first, validates the job
+before FFmpeg starts, and exposes typed results, warnings, errors, and progress.
 
 ## Requirements
 
-- Node.js `>= 22` (developed on `26.5.0`, see [`.nvmrc`](.nvmrc)).
-- **FFmpeg + ffprobe** on your `PATH` (or configured via an explicit override).
-  VHJS shells out to them — it does not bundle libav. Verify with
-  `ffmpeg -version` and `ffprobe -version`.
+- Node.js 22 or newer.
+- `ffmpeg` and `ffprobe` on `PATH`, or explicit binary paths supplied to VHJS.
+
+VHJS does not bundle FFmpeg. Confirm your installation with `ffmpeg -version`
+and `ffprobe -version`.
 
 ## Install
 
 ```bash
-pnpm add vhjs   # not yet published — coming with 0.1.0
+pnpm add vhjs
 ```
 
 ## Quickstart
 
-> The public API is landing in Phases 3–4 (see `TODO.md`). This is the intended
-> shape:
+Create one client and reuse it. Binary paths are resolved and verified on the
+first operation, then shared by the client.
 
 ```ts
-import { transcodeToHls } from "vhjs";
+import { asBitrate, asPixels, createVhjs, type Rendition } from "vhjs";
 
-const result = await transcodeToHls({
-  input: "input.mp4",
-  outDir: "out/",
-  // ladder is validated & clamped against the source before FFmpeg runs
-  renditions: [
-    { height: 1080, videoBitrate: "5000k", audioBitrate: "128k" },
-    { height: 720, videoBitrate: "2800k", audioBitrate: "128k" },
-    { height: 480, videoBitrate: "1400k", audioBitrate: "96k" },
-  ],
+const video = createVhjs();
+const rendition = (height: number, video: number, audio: number): Rendition => ({
+  height: asPixels(height),
+  videoBitrate: asBitrate(video),
+  audioBitrate: asBitrate(audio),
+  videoCodec: "h264",
+  audioCodec: "aac",
 });
 
-console.log(result.masterPlaylist); // out/master.m3u8
+const result = await video.transcodeToHls({
+  input: "input.mp4",
+  outputDir: "public/hls",
+  ladder: {
+    mode: "explicit",
+    renditions: [
+      rendition(1080, 5_000_000, 128_000),
+      rendition(720, 2_800_000, 128_000),
+      rendition(480, 1_400_000, 96_000),
+    ],
+  },
+});
+
+console.log(result.masterPlaylistPath); // public/hls/master.m3u8
 ```
 
-## Development
+Omit `ladder` (or use `{ mode: "auto" }`) to derive a sensible ladder from the
+source. Source dimensions, orientation, and bitrates are considered before the
+command runs; VHJS never knowingly upscales a requested rendition.
+
+## Core API
+
+| Export | Purpose |
+| --- | --- |
+| `createVhjs(options?)` | Creates a reusable `Vhjs` client. Use this for applications and workers. |
+| `probe(input, options?)` | One-shot source probe returning `SourceMetadata`. |
+| `transcodeToHls(request, options?)` | One-shot HLS transcode; returns `TranscodeResult` or `DryRunResult`. |
+| `startTranscodeToHls(request, options?)` | Starts an HLS job with EventEmitter and AsyncIterable progress. |
+| `vhjs(input, options?)` | Begins the immutable fluent HLS-job builder. |
+| `extractAudio(request, options?)` | Extracts one source audio stream as a bitstream copy or AAC. |
+| `addAudioTrack(request, options?)` | Adds an alternate audio rendition to an existing HLS package. |
+| `addSubtitleTrack(request, options?)` | Adds a WebVTT or SRT subtitle rendition to an existing HLS package. |
+| `removeAudioTrack(request, options?)` | Soft- or hard-removes an alternate audio rendition. |
+| `removeSubtitleTrack(request, options?)` | Soft- or hard-removes an alternate subtitle rendition. |
+| `generateThumbnail(request, options?)` | Generates one JPEG frame after validating its timestamp. |
+
+`VhjsOptions` accepts `ffmpegPath`, `ffprobePath`, and an optional structured
+`logger`. Every one-shot operation accepts the same options as its second
+argument.
+
+### HLS jobs
+
+`HlsJobConfig` takes `input`, `outputDir`, and either an automatic or explicit
+ladder. Common optional fields are `segmentDuration`, `masterPlaylistName`,
+`preset`, `frameRate`, `bitratePolicy`, `inputArgs`, `outputArgs`, `signal`,
+`onProgress`, and `dryRun`.
+
+```ts
+import { asFrameRate, createVhjs } from "vhjs";
+
+const video = createVhjs({ ffmpegPath: "/opt/ffmpeg" });
+await video.transcodeToHls({
+  input: "input.mov",
+  outputDir: "hls",
+  preset: "fast",
+  frameRate: asFrameRate(24),
+  ladder: { mode: "auto" },
+  inputArgs: ["-hwaccel", "cuda"],
+  outputArgs: ["-crf", "20"],
+});
+```
+
+`inputArgs` and `outputArgs` are additive only. VHJS rejects arguments that
+conflict with flags it manages, such as mappings, codecs, rate control, preset,
+and HLS muxer settings.
+
+### Progress and cancellation
+
+`startTranscodeToHls` returns a `TranscodeJob`. It emits `progress` events and
+is also an `AsyncIterable<ProgressEvent>`; await `job.result` for completion.
+Pass an `AbortSignal` in any HLS/audio/subtitle/thumbnail request to cancel it.
+
+```ts
+const controller = new AbortController();
+const job = video.startTranscodeToHls({
+  input: "input.mp4",
+  outputDir: "hls",
+  signal: controller.signal,
+});
+
+for await (const event of job) {
+  console.log(event.percent, event.speed);
+}
+await job.result;
+```
+
+### Audio, subtitles, and thumbnails
+
+Audio extraction requires an explicit `mode`: `"copy"` preserves the source
+bitstream, while `"aac"` re-encodes and downmixes to stereo by default.
+Alternate tracks patch an existing master playlist while preserving its variants.
+For audio, reuse `groupId` to add multiple languages. Subtitle input may be
+WebVTT or SRT; SRT is converted to WebVTT during packaging.
+
+```ts
+await video.addSubtitleTrack({
+  packageDir: "hls",
+  subtitleInput: "captions.en.srt",
+  language: "en",
+  name: "English",
+  groupId: "subtitles",
+});
+
+await video.generateThumbnail({
+  input: "input.mp4",
+  output: "public/poster.jpg",
+  timestampSeconds: 3,
+});
+```
+
+Track removal uses `mode: "soft"` to patch only the master playlist, or
+`mode: "hard"` to also remove VHJS-generated rendition files. Hard removal
+rejects unsafe playlist URIs that would escape the HLS package directory.
+
+### Dry runs
+
+Set `dryRun: true` on a transcode, audio, subtitle, or thumbnail request to
+receive the exact FFmpeg argv without creating directories, writing files, or
+running FFmpeg. Use the corresponding `isDryRun`, `isAudioDryRun`,
+`isSubtitleDryRun`, or `isThumbnailDryRun` guard to narrow the result.
+
+## Public types and helpers
+
+| Group | Exports |
+| --- | --- |
+| Job configuration | `HlsJobConfig`, `HlsJobOptions`, `HlsLadderConfig`, `BitratePolicy`, `TranscodeRequest`, `FfmpegPreset`, `FFMPEG_PRESETS` |
+| Results and media | `SourceMetadata`, `Rendition`, `TranscodeResult`, `ProgressEvent`, `ValidationWarning`, audio/subtitle/thumbnail/track request and result types |
+| Validated scalars | `asBitrate`, `asFrameRate`, `asMilliseconds`, `asPixels` and their branded types |
+| HLS helpers | `autoLadder`, `normalizeLadder`, `buildHlsCommand`, playlist parse/serialize/patch helpers, and audio/subtitle/thumbnail command builders |
+| Guards | `isDryRun`, `isAudioDryRun`, `isSubtitleDryRun`, `isThumbnailDryRun`, `isFfmpegPreset` |
+
+The complete generated API reference is produced with `pnpm docs` in
+`docs/api/`. The public package entry is ESM-only; use normal ESM imports.
+
+## Errors
+
+All library errors extend `VhjsError` and have a discriminating `code` suitable
+for `switch` statements. Important error exports include
+`ResolutionUpscaleError`, `BitrateExceedsSourceError`, `ProbeError`,
+`TranscodeError`, `PlaylistParseError`, `NoAudioTrackError`,
+`NoSubtitleTrackError`, `InvalidThumbnailTimestampError`,
+`ThumbnailTimestampExceedsDurationError`, `UnsafePlaylistUriError`, and binary
+resolution errors.
+
+## Examples and framework recipes
+
+The runnable examples cover probing, basic HLS, ABR, audio extraction,
+alternate audio, subtitles, progress streaming, dry runs, playlist manipulation,
+and thumbnails. Run them from a clone of this repository:
 
 ```bash
-pnpm install       # install deps
-pnpm build         # bundle to dist/ (esm + .d.ts) via tsup
-pnpm test          # unit tests (vitest)
-pnpm test:cov      # tests + coverage gate (>=90% line & branch)
-pnpm lint          # lint + format check (biome)
-pnpm typecheck     # tsc --noEmit
-pnpm example <name>  # run an examples/ script against the source (tsx)
+pnpm install
+pnpm example 01-probe
+pnpm example 08-dry-run
 ```
 
-See [`CLAUDE.md`](CLAUDE.md) for architecture and contribution conventions, and
-[`examples/`](examples/README.md) for a live local dev sandbox + usage recipes.
+See [examples/README.md](examples/README.md) for the full list, media setup, and
+framework recipes for Express, Fastify, NestJS, and Next.js.
+
+## Development and releases
+
+```bash
+pnpm build       # ESM bundle and declarations
+pnpm typecheck
+pnpm lint
+pnpm test:cov
+pnpm test:e2e    # requires FFmpeg
+pnpm docs        # generated reference in docs/api/
+```
+
+Releases follow Semantic Versioning. See [CHANGELOG.md](CHANGELOG.md) for
+published changes and upgrade notes.
 
 ## License
 

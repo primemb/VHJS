@@ -161,12 +161,12 @@ A task is not done until all of these hold — no exceptions:
 - [x] Ensure zero framework deps leak into core bundle.
 
 ## Phase 9 — Docs, examples, release 🟡
-- [ ] README with quickstart + full API table.
-- [ ] `typedoc` API reference.
-- [ ] Flesh out `examples/` runnable scripts (see `examples/README.md` for the planned set: probe, basic HLS, ABR ladder, extract audio, add audio track, add subtitles, progress+cancel, dry-run) + framework recipes.
-- [ ] Smoke-run examples in CI where feasible so they can't silently rot.
-- [ ] Semantic versioning + `CHANGELOG.md`; publish config; `exports` map for ESM.
-- [ ] Publish `0.1.0` once Phases 1–4 are green.
+- [x] README with quickstart + full API table.
+- [x] `typedoc` API reference.
+- [x] Flesh out `examples/` runnable scripts (see `examples/README.md` for the planned set: probe, basic HLS, ABR ladder, extract audio, add audio track, add subtitles, progress+cancel, dry-run) + framework recipes.
+- [x] Smoke-run examples in CI where feasible so they can't silently rot.
+- [x] Semantic versioning + `CHANGELOG.md`; publish config; `exports` map for ESM.
+- [ ] Publish `0.1.0` once Phases 1–4 are green (release-ready; requires npm publish authority).
 
 ---
 
