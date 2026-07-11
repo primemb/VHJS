@@ -5,12 +5,16 @@ import { asBitrate, asPixels } from "../types/brands.js";
 import type { AudioStream, VideoStream } from "../types/metadata.js";
 import {
   BitrateExceedsSourceError,
+  InvalidFrameRateError,
   ResolutionUpscaleError,
   UnsupportedCodecError,
+  UnsupportedFfmpegPresetError,
 } from "./errors.js";
 import {
   assertNoUpscale,
   assertSupportedCodecs,
+  assertSupportedFfmpegPreset,
+  assertValidFrameRate,
   checkAudioDurationMatch,
   clampBitrate,
   DEFAULT_AUDIO_DURATION_TOLERANCE_MS,
@@ -18,6 +22,18 @@ import {
   primaryVideoStream,
   validateRendition,
 } from "./rules.js";
+
+describe("transcode option validation", () => {
+  it("accepts valid target frame rates and supported presets", () => {
+    expect(() => assertValidFrameRate(23.976)).not.toThrow();
+    expect(() => assertSupportedFfmpegPreset("fast")).not.toThrow();
+  });
+
+  it("rejects invalid target frame rates and unknown presets", () => {
+    expect(() => assertValidFrameRate(0)).toThrow(InvalidFrameRateError);
+    expect(() => assertSupportedFfmpegPreset("turbo")).toThrow(UnsupportedFfmpegPresetError);
+  });
+});
 
 /** A source video stream with an explicit bitrate/height for bitrate tests. */
 function video(overrides: Partial<VideoStream> = {}): VideoStream {

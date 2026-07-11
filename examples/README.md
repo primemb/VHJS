@@ -27,6 +27,7 @@ examples/
   07-progress-events.ts    # subscribe to progress + cancel via AbortSignal
   08-dry-run.ts            # print the FFmpeg argv without executing
   09-playlist-manipulation.ts # parse/inspect/serialize media playlist metadata
+  10-thumbnail.ts          # extract a validated single-frame JPEG thumbnail
   frameworks/
     README.md              # setup, security, and integration notes
     express/               # REST API + SSE progress + static HLS server
@@ -46,6 +47,7 @@ pnpm example 03-abr-ladder        # auto ABR ladder + live progress
 pnpm example 07-progress-events   # EventEmitter + AsyncIterable progress
 pnpm example 08-dry-run           # print the ffmpeg argv without running it
 pnpm example 09-playlist-manipulation # parse and reserialize a media playlist (no FFmpeg needed)
+pnpm example 10-thumbnail             # generate a JPEG at a source timestamp
 pnpm example 04-extract-audio     # demux audio to a file (copy + aac modes)
 pnpm example 05-add-audio-track   # add an alternate-audio track to a package
 pnpm example 06-add-subtitles     # add WebVTT/SRT subtitles to a package
@@ -118,6 +120,37 @@ await vhjs.transcodeToHls({
   outputArgs: ["-tune", "film", "-crf", "20"], // per-output options
 });
 ```
+
+## Encoding controls, thumbnails, and alternate-track removal
+
+Use a branded target FPS and a typed libx264 preset when transcoding. Supported
+presets are `ultrafast` through `placebo`; VHJS validates both settings before
+FFmpeg runs.
+
+```ts
+import { asFrameRate, createVhjs } from "vhjs";
+
+const client = createVhjs();
+await client.transcodeToHls({
+  input: "in.mp4",
+  outputDir: "out",
+  frameRate: asFrameRate(24),
+  preset: "fast",
+});
+
+await client.generateThumbnail({
+  input: "in.mp4",
+  output: "out/poster.jpg",
+  timestampSeconds: 3, // omit for second 1
+});
+
+await client.removeAudioTrack({ packageDir: "out", groupId: "audio", name: "English", mode: "soft" });
+await client.removeSubtitleTrack({ packageDir: "out", groupId: "subs", name: "English", mode: "hard" });
+```
+
+Soft removal patches only the master playlist. Hard removal also deletes the
+generated rendition directory; VHJS rejects playlist URIs that could leave the
+HLS package before deleting anything.
 
 ## Rules for example code
 

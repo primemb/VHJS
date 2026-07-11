@@ -79,8 +79,9 @@ export function createTranscoder(deps: TranscoderDeps): Transcoder {
       // 4. Build the exact ffmpeg command (pure). Audio is only mapped when the
       // source actually has an audio track.
       const segmentDuration = request.segmentDuration ?? DEFAULT_SEGMENT_DURATION_SEC;
+      const targetFrameRate = request.frameRate ?? sourceFrameRate(source);
       const command = buildHlsCommand(
-        buildOptions(request, renditions, segmentDuration, sourceFrameRate(source), {
+        buildOptions(request, renditions, segmentDuration, targetFrameRate, {
           includeAudio: source.audio.length > 0,
         }),
       );
@@ -169,6 +170,7 @@ function buildOptions(
     includeAudio: extra.includeAudio,
     ...(request.masterPlaylistName ? { masterPlaylistName: request.masterPlaylistName } : {}),
     ...(request.preset ? { preset: request.preset } : {}),
+    ...(request.frameRate !== undefined ? { frameRate: request.frameRate } : {}),
     ...(gopSize !== undefined ? { gopSize } : {}),
     ...(request.inputArgs ? { inputArgs: request.inputArgs } : {}),
     ...(request.outputArgs ? { outputArgs: request.outputArgs } : {}),

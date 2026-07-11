@@ -17,6 +17,7 @@
  */
 import type { Bitrate } from "../types/brands.js";
 import type { BitratePolicy } from "../types/config.js";
+import { FFMPEG_PRESETS, isFfmpegPreset } from "../types/encoding.js";
 import type { SourceMetadata, VideoStream } from "../types/metadata.js";
 import { displayDimensions } from "../types/orientation.js";
 import {
@@ -27,14 +28,30 @@ import {
 import type { ValidationWarning } from "../types/warnings.js";
 import {
   BitrateExceedsSourceError,
+  InvalidFrameRateError,
   ResolutionUpscaleError,
   UnsupportedCodecError,
+  UnsupportedFfmpegPresetError,
 } from "./errors.js";
 
 export type { BitratePolicy } from "../types/config.js";
 
 /** Default policy: tolerate up to 1.5× the source before erroring. */
 export const DEFAULT_BITRATE_POLICY: BitratePolicy = { hardExceedFactor: 1.5 };
+
+/** Reject an invalid target frame rate before FFmpeg is invoked. */
+export function assertValidFrameRate(frameRate: number): void {
+  if (!Number.isFinite(frameRate) || frameRate <= 0) {
+    throw new InvalidFrameRateError(frameRate);
+  }
+}
+
+/** Reject a libx264 preset outside the explicitly supported public contract. */
+export function assertSupportedFfmpegPreset(preset: string): void {
+  if (!isFfmpegPreset(preset)) {
+    throw new UnsupportedFfmpegPresetError(preset, FFMPEG_PRESETS);
+  }
+}
 
 /** The outcome of clamping one bitrate against a source reference. */
 export interface ClampedBitrate {

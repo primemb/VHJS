@@ -1,16 +1,23 @@
 import { describe, expect, it } from "vitest";
 import {
+  AlternateTrackNotFoundError,
   BitrateExceedsSourceError,
   ConflictingFfmpegArgError,
   FfmpegNotFoundError,
   FfprobeNotFoundError,
+  InvalidFrameRateError,
+  InvalidThumbnailTimestampError,
   NoSubtitleTrackError,
   PlaylistParseError,
   ProbeError,
   ResolutionUpscaleError,
+  ThumbnailTimestampExceedsDurationError,
   TranscodeError,
+  UnsafePlaylistUriError,
   UnsupportedCodecError,
+  UnsupportedFfmpegPresetError,
   VhjsError,
+  VideoDurationUnavailableError,
 } from "./errors.js";
 
 describe("FfmpegNotFoundError", () => {
@@ -153,5 +160,37 @@ describe("ConflictingFfmpegArgError", () => {
   it("names the conflicting flags in the message", () => {
     expect(err.message).toContain("-preset");
     expect(err.message).toContain("-c:v");
+  });
+});
+
+describe("new feature errors", () => {
+  it("carries precise codes and context for encoding controls", () => {
+    expect(new InvalidFrameRateError(0)).toMatchObject({
+      code: "INVALID_FRAME_RATE",
+      frameRate: 0,
+    });
+    expect(new UnsupportedFfmpegPresetError("turbo", ["fast"])).toMatchObject({
+      code: "UNSUPPORTED_FFMPEG_PRESET",
+      preset: "turbo",
+    });
+  });
+
+  it("carries precise codes and context for thumbnail validation", () => {
+    expect(new InvalidThumbnailTimestampError(-1).code).toBe("INVALID_THUMBNAIL_TIMESTAMP");
+    expect(new ThumbnailTimestampExceedsDurationError(2_000, 1_000)).toMatchObject({
+      code: "THUMBNAIL_TIMESTAMP_EXCEEDS_DURATION",
+      timestampMs: 2_000,
+      durationMs: 1_000,
+    });
+    expect(new VideoDurationUnavailableError("in.mp4").code).toBe("VIDEO_DURATION_UNAVAILABLE");
+  });
+
+  it("carries precise codes and context for alternate-track removal", () => {
+    expect(new AlternateTrackNotFoundError("AUDIO", "audio", "English")).toMatchObject({
+      code: "ALTERNATE_TRACK_NOT_FOUND",
+      groupId: "audio",
+      trackName: "English",
+    });
+    expect(new UnsafePlaylistUriError("../audio.m3u8").code).toBe("UNSAFE_PLAYLIST_URI");
   });
 });

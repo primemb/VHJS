@@ -22,9 +22,12 @@ per-rendition media playlists + segments) and lets the user:
    *existing* HLS package as `EXT-X-MEDIA` alternate audio renditions.
 4. **Add subtitles** (WebVTT) to an existing HLS package as `EXT-X-MEDIA`
    subtitle renditions.
-5. **Control encoding parameters** — output resolution, video bitrate, audio
-   bitrate, codec, segment duration, etc.
-6. **Validate against the source**: a requested rendition that *upscales*
+5. **Remove alternate audio or subtitle tracks** softly (master-reference only)
+   or hard (also delete their generated rendition directory).
+6. **Generate thumbnails** at a validated source timestamp (second `1` by default).
+7. **Control encoding parameters** — output resolution, video bitrate, audio
+   bitrate, target FPS, libx264 preset, codec, segment duration, etc.
+8. **Validate against the source**: a requested rendition that *upscales*
    resolution or *exceeds* the source bitrate is rejected with a **typed error**
    before FFmpeg ever runs (probe-first, fail-fast).
 
@@ -118,6 +121,8 @@ src/
     playlist.ts          # parse & generate m3u8 (master + media playlists)
     audio.ts             # extract audio; add alternate audio renditions to existing HLS
     subtitle.ts          # segment WebVTT; add subtitle renditions to existing HLS
+    alternate-track.ts   # remove alternate renditions (soft/hard) safely
+    thumbnail.ts         # probe-validated single-frame thumbnail generation
   validation/
     rules.ts             # resolution/bitrate/codec checks vs SourceMetadata
     errors.ts            # typed error classes (see below)
@@ -368,6 +373,13 @@ adapters):
   `addAlternateAudio` / `addAlternateSubtitle` patches (preserve existing
   renditions, bump `EXT-X-VERSION` ≥ 4), and `sumMediaPlaylistDurationMs`.
   Malformed input → `PlaylistParseError`.
+
+> **Additional controls and package maintenance:** `frameRate` (branded) applies
+> FFmpeg's `fps` filter and aligns GOP size; `preset` is a typed libx264 preset
+> union. `hls/thumbnail.ts` probes first and rejects timestamps beyond duration
+> before extracting one image. `hls/alternate-track.ts` soft-removes a selected
+> `EXT-X-MEDIA` rendition or hard-removes its validated package-relative
+> rendition directory, never following traversal or absolute playlist URIs.
 
 > Note: the arg-builder lives in `hls/command.ts` (a pure *decision*), not
 > `core/ffmpeg.ts`, per the mandatory "decision in the domain, I/O in an adapter"

@@ -20,8 +20,10 @@ import { createFfmpegRunner } from "./core/ffmpeg.js";
 import { createFfprobeService } from "./core/ffprobe.js";
 import { createNodeFileSystem } from "./core/fs.js";
 import { createProcessRunner } from "./core/process.js";
+import { type AlternateTrackTools, createAlternateTrackTools } from "./hls/alternate-track.js";
 import { type AudioTools, createAudioTools } from "./hls/audio.js";
 import { createSubtitleTools, type SubtitleTools } from "./hls/subtitle.js";
+import { createThumbnailTools, type ThumbnailTools } from "./hls/thumbnail.js";
 import {
   createTranscoder,
   type TranscodeOutcome,
@@ -42,6 +44,16 @@ import type {
   AddSubtitleTrackResult,
   SubtitleDryRunResult,
 } from "./types/subtitle.js";
+import type {
+  GenerateThumbnailRequest,
+  GenerateThumbnailResult,
+  ThumbnailDryRunResult,
+} from "./types/thumbnail.js";
+import type {
+  RemoveAlternateTrackResult,
+  RemoveAudioTrackRequest,
+  RemoveSubtitleTrackRequest,
+} from "./types/tracks.js";
 
 /** Options common to the composed entry points. */
 export interface VhjsOptions {
@@ -69,6 +81,14 @@ export interface Vhjs {
   addSubtitleTrack(
     request: AddSubtitleTrackRequest,
   ): Promise<AddSubtitleTrackResult | SubtitleDryRunResult>;
+  /** Remove an alternate-audio rendition, optionally deleting its generated files. */
+  removeAudioTrack(request: RemoveAudioTrackRequest): Promise<RemoveAlternateTrackResult>;
+  /** Remove an alternate subtitle rendition, optionally deleting its generated files. */
+  removeSubtitleTrack(request: RemoveSubtitleTrackRequest): Promise<RemoveAlternateTrackResult>;
+  /** Generate one thumbnail at a validated source timestamp. */
+  generateThumbnail(
+    request: GenerateThumbnailRequest,
+  ): Promise<GenerateThumbnailResult | ThumbnailDryRunResult>;
 }
 
 /** Build the `BinaryOverrides` object, omitting undefined keys. */
@@ -102,6 +122,8 @@ export function createVhjs(options: VhjsOptions = {}): Vhjs {
     transcoder: Transcoder;
     audio: AudioTools;
     subtitle: SubtitleTools;
+    alternateTracks: AlternateTrackTools;
+    thumbnail: ThumbnailTools;
   };
   let servicesPromise: Promise<Services> | undefined;
   const services = (): Promise<Services> => {
@@ -120,6 +142,8 @@ export function createVhjs(options: VhjsOptions = {}): Vhjs {
         transcoder: createTranscoder(sharedDeps),
         audio: createAudioTools(sharedDeps),
         subtitle: createSubtitleTools(sharedDeps),
+        alternateTracks: createAlternateTrackTools(sharedDeps),
+        thumbnail: createThumbnailTools(sharedDeps),
       };
     })();
     return servicesPromise;
@@ -156,6 +180,18 @@ export function createVhjs(options: VhjsOptions = {}): Vhjs {
     async addSubtitleTrack(request) {
       const { subtitle } = await services();
       return subtitle.addSubtitleTrack(request);
+    },
+    async removeAudioTrack(request) {
+      const { alternateTracks } = await services();
+      return alternateTracks.removeAlternateTrack("AUDIO", request);
+    },
+    async removeSubtitleTrack(request) {
+      const { alternateTracks } = await services();
+      return alternateTracks.removeAlternateTrack("SUBTITLES", request);
+    },
+    async generateThumbnail(request) {
+      const { thumbnail } = await services();
+      return thumbnail.generateThumbnail(request);
     },
   };
 }
@@ -222,6 +258,30 @@ export function addSubtitleTrack(
   options: VhjsOptions = {},
 ): Promise<AddSubtitleTrackResult | SubtitleDryRunResult> {
   return createVhjs(options).addSubtitleTrack(request);
+}
+
+/** One-shot alternate-audio removal. */
+export function removeAudioTrack(
+  request: RemoveAudioTrackRequest,
+  options: VhjsOptions = {},
+): Promise<RemoveAlternateTrackResult> {
+  return createVhjs(options).removeAudioTrack(request);
+}
+
+/** One-shot alternate-subtitle removal. */
+export function removeSubtitleTrack(
+  request: RemoveSubtitleTrackRequest,
+  options: VhjsOptions = {},
+): Promise<RemoveAlternateTrackResult> {
+  return createVhjs(options).removeSubtitleTrack(request);
+}
+
+/** One-shot thumbnail generation. */
+export function generateThumbnail(
+  request: GenerateThumbnailRequest,
+  options: VhjsOptions = {},
+): Promise<GenerateThumbnailResult | ThumbnailDryRunResult> {
+  return createVhjs(options).generateThumbnail(request);
 }
 
 /**

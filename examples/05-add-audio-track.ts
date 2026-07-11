@@ -38,3 +38,28 @@ for (const warning of added.warnings) {
 
 console.log("\nPatched master playlist:\n");
 console.log(await readFile(added.masterPlaylistPath, "utf8"));
+
+// Soft removal only unlinks the rendition from the master. The generated audio
+// playlist and segments stay available on disk if you need to attach them again.
+await vhjs.removeAudioTrack({
+  packageDir,
+  groupId: added.groupId,
+  name: added.name,
+  mode: "soft",
+});
+
+// Add it again, then use hard removal to delete its generated playlist/segments too.
+const readded = await vhjs.addAudioTrack({
+  packageDir,
+  audioInput: input,
+  language: "es",
+  name: "EspaÃ±ol",
+});
+if (isAudioDryRun(readded)) throw new Error("unexpected dry run");
+const removed = await vhjs.removeAudioTrack({
+  packageDir,
+  groupId: readded.groupId,
+  name: readded.name,
+  mode: "hard",
+});
+console.log(`Hard-removed audio files at ${removed.removedUri}`);

@@ -42,4 +42,14 @@ describe("createNodeFileSystem", () => {
     await fs.writeFile(join(dir, "two.ts"), "");
     expect((await fs.readDir(dir)).sort()).toEqual(["one.ts", "two.ts"]);
   });
+
+  it("removes a directory tree", async () => {
+    const dir = join(root, "removal", "nested");
+    await fs.mkdirp(dir);
+    await fs.writeFile(join(dir, "segment.ts"), "data");
+
+    await fs.removeDir(join(root, "removal"));
+
+    expect(await fs.exists(join(root, "removal"))).toBe(false);
+  });
 });

@@ -4,7 +4,9 @@
  * accidentally change one another before they are run.
  */
 import type { TranscodeOutcome } from "../hls/transcoder.js";
+import type { FrameRate } from "../types/brands.js";
 import type { BitratePolicy, HlsJobConfig, TranscodeRequest } from "../types/config.js";
+import type { FfmpegPreset } from "../types/encoding.js";
 import type { ProgressEvent } from "../types/progress.js";
 import type { Rendition } from "../types/rendition.js";
 import type { TranscodeJob } from "./transcode-job.js";
@@ -25,7 +27,8 @@ export interface HlsJobBuilder {
   rendition(rendition: Rendition): HlsJobBuilder;
   segmentDuration(seconds: number): HlsJobBuilder;
   masterPlaylist(name: string): HlsJobBuilder;
-  preset(name: string): HlsJobBuilder;
+  preset(name: FfmpegPreset): HlsJobBuilder;
+  frameRate(fps: FrameRate): HlsJobBuilder;
   bitratePolicy(policy: BitratePolicy): HlsJobBuilder;
   inputArgs(...args: string[]): HlsJobBuilder;
   outputArgs(...args: string[]): HlsJobBuilder;
@@ -44,7 +47,8 @@ interface HlsJobDraft {
   readonly renditions: readonly Rendition[];
   readonly segmentDuration?: number;
   readonly masterPlaylistName?: string;
-  readonly preset?: string;
+  readonly preset?: FfmpegPreset;
+  readonly frameRate?: FrameRate;
   readonly bitratePolicy?: BitratePolicy;
   readonly inputArgs?: readonly string[];
   readonly outputArgs?: readonly string[];
@@ -70,6 +74,7 @@ function createConfiguredBuilder(draft: HlsJobDraft, client: HlsJobClient): HlsJ
     segmentDuration: (segmentDuration) => next({ segmentDuration }),
     masterPlaylist: (masterPlaylistName) => next({ masterPlaylistName }),
     preset: (preset) => next({ preset }),
+    frameRate: (frameRate) => next({ frameRate }),
     bitratePolicy: (bitratePolicy) => next({ bitratePolicy }),
     inputArgs: (...inputArgs) => next({ inputArgs }),
     outputArgs: (...outputArgs) => next({ outputArgs }),
@@ -91,6 +96,7 @@ function toConfig(draft: HlsJobDraft): HlsJobConfig {
       ? {}
       : { masterPlaylistName: draft.masterPlaylistName }),
     ...(draft.preset === undefined ? {} : { preset: draft.preset }),
+    ...(draft.frameRate === undefined ? {} : { frameRate: draft.frameRate }),
     ...(draft.bitratePolicy === undefined ? {} : { bitratePolicy: draft.bitratePolicy }),
     ...(draft.inputArgs === undefined ? {} : { inputArgs: draft.inputArgs }),
     ...(draft.outputArgs === undefined ? {} : { outputArgs: draft.outputArgs }),

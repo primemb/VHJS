@@ -2,7 +2,7 @@
  * Filesystem adapter — implements the `FileSystem` port over `node:fs/promises`.
  * The only place (besides sibling `core/` modules) allowed to touch `node:fs`.
  */
-import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import type { FileSystem } from "../ports/index.js";
 
 /** Create a `FileSystem` backed by the real Node filesystem. */
@@ -31,6 +31,10 @@ export function createNodeFileSystem(): FileSystem {
 
     async readDir(path: string): Promise<string[]> {
       return readdir(path);
+    },
+
+    async removeDir(path: string): Promise<void> {
+      await rm(path, { recursive: true, force: true });
     },
   };
 }

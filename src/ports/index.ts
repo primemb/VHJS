@@ -54,6 +54,8 @@ export interface FileSystem {
   readFile(path: string): Promise<string>;
   /** List entry names directly under `path`. */
   readDir(path: string): Promise<string[]>;
+  /** Remove a directory and all of its contents; a no-op when it does not exist. */
+  removeDir(path: string): Promise<void>;
 }
 
 /** A source of wall-clock time — injected so job timings are deterministic in tests. */

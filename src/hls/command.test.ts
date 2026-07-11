@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { makeRendition } from "../../tests/fixtures/rendition.js";
 import { asBitrate, asPixels } from "../types/brands.js";
-import { ConflictingFfmpegArgError } from "../validation/errors.js";
+import { ConflictingFfmpegArgError, UnsupportedFfmpegPresetError } from "../validation/errors.js";
 import { buildHlsCommand } from "./command.js";
 
 const ladder = [
@@ -32,6 +32,27 @@ describe("buildHlsCommand", () => {
     const { args } = buildHlsCommand({ input: "in.mp4", outputDir: "out", renditions: ladder });
     const graph = args[args.indexOf("-filter_complex") + 1];
     expect(graph).toBe("[0:v]split=2[v0][v1];[v0]scale=-2:1080[vout0];[v1]scale=-2:720[vout1]");
+  });
+
+  it("adds a target-FPS filter when callers request a frame rate", () => {
+    const { args } = buildHlsCommand({
+      input: "in.mp4",
+      outputDir: "out",
+      renditions: ladder,
+      frameRate: 24,
+    });
+    expect(args[args.indexOf("-filter_complex") + 1]).toContain("fps=24,scale=-2:1080");
+  });
+
+  it("rejects an unsupported preset before FFmpeg can run", () => {
+    expect(() =>
+      buildHlsCommand({
+        input: "in.mp4",
+        outputDir: "out",
+        renditions: ladder,
+        preset: "turbo" as never,
+      }),
+    ).toThrow(UnsupportedFfmpegPresetError);
   });
 
   it("maps one video output and one source-audio map per rung", () => {

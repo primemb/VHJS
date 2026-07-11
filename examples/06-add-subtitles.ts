@@ -45,3 +45,28 @@ if (isSubtitleDryRun(added)) throw new Error("unexpected dry run");
 console.log(`Added subtitles [${added.groupId}] ${added.name} -> ${added.subtitlePlaylistPath}`);
 console.log("\nPatched master playlist:\n");
 console.log(await readFile(added.masterPlaylistPath, "utf8"));
+
+// Soft removal preserves the generated WebVTT playlist and segments on disk.
+await vhjs.removeSubtitleTrack({
+  packageDir,
+  groupId: added.groupId,
+  name: added.name,
+  mode: "soft",
+});
+
+// Reattach it, then hard-remove both its master entry and generated VTT files.
+const readded = await vhjs.addSubtitleTrack({
+  packageDir,
+  subtitleInput,
+  language: "en",
+  name: "English",
+  isDefault: true,
+});
+if (isSubtitleDryRun(readded)) throw new Error("unexpected dry run");
+const removed = await vhjs.removeSubtitleTrack({
+  packageDir,
+  groupId: readded.groupId,
+  name: readded.name,
+  mode: "hard",
+});
+console.log(`Hard-removed subtitle files at ${removed.removedUri}`);

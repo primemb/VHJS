@@ -32,8 +32,10 @@
  */
 
 import { DEFAULT_HLS_JOB_OPTIONS } from "../types/config.js";
+import type { FfmpegPreset } from "../types/encoding.js";
 import { type Rendition, renditionName } from "../types/rendition.js";
 import { ConflictingFfmpegArgError } from "../validation/errors.js";
+import { assertSupportedFfmpegPreset, assertValidFrameRate } from "../validation/rules.js";
 
 /** HLS build defaults (overridable per job). */
 export const DEFAULT_SEGMENT_DURATION_SEC = DEFAULT_HLS_JOB_OPTIONS.segmentDuration;
@@ -54,7 +56,9 @@ export interface HlsBuildOptions {
   /** Master playlist filename (default `master.m3u8`). */
   readonly masterPlaylistName?: string;
   /** libx264 preset (default `veryfast`). */
-  readonly preset?: string;
+  readonly preset?: FfmpegPreset;
+  /** Target constant frame rate. Adds FFmpeg's `fps` filter when set. */
+  readonly frameRate?: number;
   /** When set, forces the keyframe interval (frames) for clean segment splits. */
   readonly gopSize?: number;
   /**
@@ -168,10 +172,11 @@ function toPosix(path: string): string {
  * (H.264 requires even dimensions). Adding our own transpose would double-rotate
  * and ship sideways video.
  */
-function buildFilterGraph(renditions: readonly Rendition[]): string {
+function buildFilterGraph(renditions: readonly Rendition[], frameRate: number | undefined): string {
   const labels = renditions.map((_, i) => `[v${i}]`).join("");
   const split = `[0:v]split=${renditions.length}${labels}`;
-  const scales = renditions.map((r, i) => `[v${i}]scale=-2:${r.height}[vout${i}]`);
+  const fps = frameRate === undefined ? "" : `fps=${frameRate},`;
+  const scales = renditions.map((r, i) => `[v${i}]${fps}scale=-2:${r.height}[vout${i}]`);
   return [split, ...scales].join(";");
 }
 
@@ -187,6 +192,7 @@ export function buildHlsCommand(options: HlsBuildOptions): HlsCommand {
     segmentDuration = DEFAULT_SEGMENT_DURATION_SEC,
     masterPlaylistName = DEFAULT_MASTER_PLAYLIST_NAME,
     preset = DEFAULT_PRESET,
+    frameRate,
     gopSize,
     includeAudio = true,
     inputArgs = [],
@@ -195,6 +201,10 @@ export function buildHlsCommand(options: HlsBuildOptions): HlsCommand {
 
   if (renditions.length === 0) {
     throw new RangeError("buildHlsCommand requires at least one rendition");
+  }
+  assertSupportedFfmpegPreset(preset);
+  if (frameRate !== undefined) {
+    assertValidFrameRate(frameRate);
   }
 
   // Custom args are additive only — they must not fight the flags VHJS owns.
@@ -245,7 +255,7 @@ export function buildHlsCommand(options: HlsBuildOptions): HlsCommand {
     "-i",
     input,
     "-filter_complex",
-    buildFilterGraph(renditions),
+    buildFilterGraph(renditions, frameRate),
     ...videoMaps,
     ...audioMaps,
     ...videoCodecArgs,

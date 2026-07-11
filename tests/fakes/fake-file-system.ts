@@ -43,4 +43,18 @@ export class FakeFileSystem implements FileSystem {
     }
     return [...names];
   }
+
+  async removeDir(path: string): Promise<void> {
+    const prefix = path.endsWith("/") ? path : `${path}/`;
+    for (const filePath of this.files.keys()) {
+      if (filePath === path || filePath.startsWith(prefix)) {
+        this.files.delete(filePath);
+      }
+    }
+    for (const dirPath of this.dirs) {
+      if (dirPath === path || dirPath.startsWith(prefix)) {
+        this.dirs.delete(dirPath);
+      }
+    }
+  }
 }

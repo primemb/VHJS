@@ -23,7 +23,14 @@ export type VhjsErrorCode =
   | "PLAYLIST_PARSE"
   | "CONFLICTING_FFMPEG_ARG"
   | "NO_AUDIO_TRACK"
-  | "NO_SUBTITLE_TRACK";
+  | "NO_SUBTITLE_TRACK"
+  | "INVALID_FRAME_RATE"
+  | "UNSUPPORTED_FFMPEG_PRESET"
+  | "THUMBNAIL_TIMESTAMP_EXCEEDS_DURATION"
+  | "VIDEO_DURATION_UNAVAILABLE"
+  | "ALTERNATE_TRACK_NOT_FOUND"
+  | "UNSAFE_PLAYLIST_URI"
+  | "INVALID_THUMBNAIL_TIMESTAMP";
 
 /** Base class for all VHJS errors. Subclasses set a literal `code`. */
 export abstract class VhjsError extends Error {
@@ -233,5 +240,108 @@ export class ConflictingFfmpegArgError extends VhjsError {
         "Remove them — VHJS owns those; pass only additive options (e.g. -tune, -crf, -pix_fmt, -hwaccel).",
       options,
     );
+  }
+}
+
+/** A requested output frame rate is not a positive, finite number. */
+export class InvalidFrameRateError extends VhjsError {
+  readonly code = "INVALID_FRAME_RATE" as const;
+
+  constructor(
+    readonly frameRate: number,
+    options?: ErrorOptions,
+  ) {
+    super(`Frame rate must be a positive finite number, got ${frameRate}.`, options);
+  }
+}
+
+/** A caller selected an encoder preset that VHJS does not support. */
+export class UnsupportedFfmpegPresetError extends VhjsError {
+  readonly code = "UNSUPPORTED_FFMPEG_PRESET" as const;
+
+  constructor(
+    readonly preset: string,
+    readonly supported: readonly string[],
+    options?: ErrorOptions,
+  ) {
+    super(
+      `Unsupported FFmpeg preset "${preset}". Supported presets: ${supported.join(", ")}.`,
+      options,
+    );
+  }
+}
+
+/** A thumbnail timestamp falls after the end of a video. */
+export class ThumbnailTimestampExceedsDurationError extends VhjsError {
+  readonly code = "THUMBNAIL_TIMESTAMP_EXCEEDS_DURATION" as const;
+
+  constructor(
+    readonly timestampMs: number,
+    readonly durationMs: number,
+    options?: ErrorOptions,
+  ) {
+    super(
+      `Thumbnail timestamp ${timestampMs}ms exceeds the video duration ${durationMs}ms.`,
+      options,
+    );
+  }
+}
+
+/** A thumbnail timestamp is not a non-negative, finite number of seconds. */
+export class InvalidThumbnailTimestampError extends VhjsError {
+  readonly code = "INVALID_THUMBNAIL_TIMESTAMP" as const;
+
+  constructor(
+    readonly timestampSeconds: number,
+    options?: ErrorOptions,
+  ) {
+    super(
+      `Thumbnail timestamp must be a non-negative finite number of seconds, got ${timestampSeconds}.`,
+      options,
+    );
+  }
+}
+
+/** A feature requiring source duration cannot validate an input with no duration metadata. */
+export class VideoDurationUnavailableError extends VhjsError {
+  readonly code = "VIDEO_DURATION_UNAVAILABLE" as const;
+
+  constructor(
+    readonly input: string,
+    options?: ErrorOptions,
+  ) {
+    super(
+      `Video duration is unavailable for "${input}", so VHJS cannot validate the request.`,
+      options,
+    );
+  }
+}
+
+/** The selected alternate audio or subtitle rendition does not exist in the master playlist. */
+export class AlternateTrackNotFoundError extends VhjsError {
+  readonly code = "ALTERNATE_TRACK_NOT_FOUND" as const;
+
+  constructor(
+    readonly kind: "AUDIO" | "SUBTITLES",
+    readonly groupId: string,
+    readonly trackName: string,
+    options?: ErrorOptions,
+  ) {
+    super(
+      `No ${kind.toLowerCase()} track named "${trackName}" exists in group "${groupId}".`,
+      options,
+    );
+  }
+}
+
+/** A playlist URI would escape its HLS package directory if used for hard deletion. */
+export class UnsafePlaylistUriError extends VhjsError {
+  readonly code = "UNSAFE_PLAYLIST_URI" as const;
+
+  constructor(
+    readonly uri: string,
+    options?: ErrorOptions,
+  ) {
+    super(`Playlist URI "${uri}" is not a safe relative path within the HLS package.`, options);
   }
 }

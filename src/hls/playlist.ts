@@ -105,6 +105,14 @@ export interface AlternateSubtitleOptions {
   readonly forced: boolean;
 }
 
+/** One alternate rendition removed from a master playlist. */
+export interface RemovedAlternateRendition {
+  readonly kind: "AUDIO" | "SUBTITLES";
+  readonly groupId: string;
+  readonly name: string;
+  readonly uri: string;
+}
+
 const MEDIA_TAG = "#EXT-X-MEDIA:";
 const STREAM_INF_TAG = "#EXT-X-STREAM-INF:";
 const VERSION_TAG = "#EXT-X-VERSION:";
@@ -189,6 +197,11 @@ function withAttribute(attributes: Attributes, key: string, value: string): Attr
   }
   next[index] = [key, value];
   return next;
+}
+
+/** Return an attribute list with `key` removed, preserving every other field. */
+function withoutAttribute(attributes: Attributes, key: string): Attributes {
+  return attributes.filter(([attributeKey]) => attributeKey !== key);
 }
 
 /**
@@ -577,6 +590,50 @@ export function addAlternateSubtitle(
       ...variant,
       attributes: withAttribute(variant.attributes, "SUBTITLES", `"${options.groupId}"`),
     })),
+  };
+}
+
+/**
+ * Remove one alternate audio or subtitle rendition. If the removed rendition
+ * was the last member of its group, the matching group reference is also
+ * removed from every variant; otherwise the remaining group members continue
+ * to be referenced. The source model is never mutated.
+ */
+export function removeAlternateRendition(
+  playlist: MasterPlaylist,
+  kind: "AUDIO" | "SUBTITLES",
+  groupId: string,
+  name: string,
+): { readonly playlist: MasterPlaylist; readonly removed: RemovedAlternateRendition | null } {
+  const matching = (rendition: MediaRendition): boolean =>
+    getAttribute(rendition.attributes, "TYPE") === kind &&
+    unquote(getAttribute(rendition.attributes, "GROUP-ID") ?? "") === groupId &&
+    unquote(getAttribute(rendition.attributes, "NAME") ?? "") === name;
+  const removedRendition = playlist.media.find(matching);
+  if (removedRendition === undefined) {
+    return { playlist, removed: null };
+  }
+  const uri = getAttribute(removedRendition.attributes, "URI");
+  if (uri === undefined) {
+    throw new PlaylistParseError(`Alternate ${kind.toLowerCase()} rendition has no URI.`);
+  }
+  const media = playlist.media.filter((rendition) => rendition !== removedRendition);
+  const groupStillExists = media.some(
+    (rendition) =>
+      getAttribute(rendition.attributes, "TYPE") === kind &&
+      unquote(getAttribute(rendition.attributes, "GROUP-ID") ?? "") === groupId,
+  );
+  const variants = groupStillExists
+    ? playlist.variants
+    : playlist.variants.map((variant) => {
+        const reference = getAttribute(variant.attributes, kind);
+        return reference !== undefined && unquote(reference) === groupId
+          ? { ...variant, attributes: withoutAttribute(variant.attributes, kind) }
+          : variant;
+      });
+  return {
+    playlist: { ...playlist, media, variants },
+    removed: { kind, groupId, name, uri: unquote(uri) },
   };
 }
 

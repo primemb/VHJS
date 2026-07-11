@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { TranscodeOutcome, TranscodeRequest } from "../hls/transcoder.js";
-import { asBitrate, asPixels } from "../types/brands.js";
+import { asBitrate, asFrameRate, asPixels } from "../types/brands.js";
 import { createHlsJobBuilder, type HlsJobClient } from "./job-builder.js";
 import { TranscodeJob } from "./transcode-job.js";
 
@@ -51,6 +51,7 @@ describe("createHlsJobBuilder", () => {
       .segmentDuration(4)
       .masterPlaylist("playlist.m3u8")
       .preset("slow")
+      .frameRate(asFrameRate(24))
       .bitratePolicy({ hardExceedFactor: 2 })
       .inputArgs("-hwaccel", "cuda")
       .outputArgs("-tune", "film")
@@ -67,6 +68,7 @@ describe("createHlsJobBuilder", () => {
         segmentDuration: 4,
         masterPlaylistName: "playlist.m3u8",
         preset: "slow",
+        frameRate: 24,
         bitratePolicy: { hardExceedFactor: 2 },
         inputArgs: ["-hwaccel", "cuda"],
         outputArgs: ["-tune", "film"],

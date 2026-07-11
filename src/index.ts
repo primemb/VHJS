@@ -22,13 +22,22 @@ export {
   addSubtitleTrack,
   createVhjs,
   extractAudio,
+  generateThumbnail,
   probe,
+  removeAudioTrack,
+  removeSubtitleTrack,
   startTranscodeToHls,
   transcodeToHls,
   type Vhjs,
   type VhjsOptions,
   vhjs,
 } from "./composition.js";
+export {
+  type AlternateTrackTools,
+  type AlternateTrackToolsDeps,
+  createAlternateTrackTools,
+  renditionDirectory,
+} from "./hls/alternate-track.js";
 export {
   type AudioExtractBuildOptions,
   type AudioHlsBuildOptions,
@@ -64,6 +73,8 @@ export {
   type MediaSegment,
   parseMasterPlaylist,
   parseMediaPlaylist,
+  type RemovedAlternateRendition,
+  removeAlternateRendition,
   serializeMasterPlaylist,
   serializeMediaPlaylist,
   sumMediaPlaylistDurationMs,
@@ -78,6 +89,14 @@ export {
   type SubtitleTools,
   type SubtitleToolsDeps,
 } from "./hls/subtitle.js";
+export {
+  buildThumbnailCommand,
+  createThumbnailTools,
+  DEFAULT_THUMBNAIL_TIMESTAMP_SECONDS,
+  type ThumbnailBuildOptions,
+  type ThumbnailTools,
+  type ThumbnailToolsDeps,
+} from "./hls/thumbnail.js";
 // --- Transcoder use-case types ---
 export {
   type DryRunResult,
@@ -112,6 +131,7 @@ export {
   type HlsLadderConfig,
   type LegacyHlsJobRequest,
 } from "./types/config.js";
+export { FFMPEG_PRESETS, type FfmpegPreset, isFfmpegPreset } from "./types/encoding.js";
 // --- Domain types ---
 export type {
   AudioStream,
@@ -142,25 +162,47 @@ export {
   isSubtitleDryRun,
   type SubtitleDryRunResult,
 } from "./types/subtitle.js";
+export {
+  type GenerateThumbnailRequest,
+  type GenerateThumbnailResult,
+  isThumbnailDryRun,
+  type ThumbnailDryRunResult,
+} from "./types/thumbnail.js";
+export type {
+  AlternateTrackRemovalMode,
+  RemoveAlternateTrackRequest,
+  RemoveAlternateTrackResult,
+  RemoveAudioTrackRequest,
+  RemoveSubtitleTrackRequest,
+} from "./types/tracks.js";
 export type { ValidationWarning, ValidationWarningCode } from "./types/warnings.js";
 // --- Errors ---
 export type { VhjsErrorCode } from "./validation/errors.js";
 export {
+  AlternateTrackNotFoundError,
   BitrateExceedsSourceError,
   ConflictingFfmpegArgError,
   FfmpegNotFoundError,
   FfprobeNotFoundError,
+  InvalidFrameRateError,
+  InvalidThumbnailTimestampError,
   NoAudioTrackError,
   NoSubtitleTrackError,
   PlaylistParseError,
   ProbeError,
   ResolutionUpscaleError,
+  ThumbnailTimestampExceedsDurationError,
   TranscodeError,
+  UnsafePlaylistUriError,
   UnsupportedCodecError,
+  UnsupportedFfmpegPresetError,
   VhjsError,
+  VideoDurationUnavailableError,
 } from "./validation/errors.js";
 // --- Validation ---
 export {
+  assertSupportedFfmpegPreset,
+  assertValidFrameRate,
   checkAudioDurationMatch,
   clampBitrate,
   DEFAULT_AUDIO_DURATION_TOLERANCE_MS,

@@ -3,7 +3,7 @@
  *
  * Run: `pnpm example 02-basic-hls`
  */
-import { asBitrate, asPixels, createVhjs, isDryRun, type Rendition } from "vhjs";
+import { asBitrate, asFrameRate, asPixels, createVhjs, isDryRun, type Rendition } from "vhjs";
 import { binaryOptions, outputDir, sampleInput } from "./_env.js";
 
 const rendition: Rendition = {
@@ -19,6 +19,9 @@ const result = await vhjs.transcodeToHls({
   input: sampleInput(),
   outputDir: outputDir("basic"),
   renditions: [rendition],
+  // Choose both the output frame rate and a libx264 speed/compression preset.
+  frameRate: asFrameRate(24),
+  preset: "fast",
 });
 
 if (isDryRun(result)) {

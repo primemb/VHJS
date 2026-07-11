@@ -170,6 +170,30 @@ A task is not done until all of these hold — no exceptions:
 
 ---
 
+## Next feature work ✅
+- [x] **Remove an alternate audio track from an HLS package.** Support both:
+  - [x] **Soft removal:** remove the track's `EXT-X-MEDIA` entry and its variant
+    references from the master playlist, while retaining the generated audio
+    playlist and segment files.
+  - [x] **Hard removal:** perform the soft removal and delete the track's audio
+    playlist and segment files from the package.
+- [x] **Remove an alternate subtitle track from an HLS package.** Support both:
+  - [x] **Soft removal:** remove the track's `EXT-X-MEDIA` entry and its variant
+    references from the master playlist, while retaining the generated subtitle
+    playlist and WebVTT segment files.
+  - [x] **Hard removal:** perform the soft removal and delete the track's subtitle
+    playlist and WebVTT segment files from the package.
+- [x] **Thumbnail generator.** Generate a thumbnail at a user-supplied timestamp;
+  default to second `1` when omitted. Probe the source first and throw a typed
+  validation error when the requested timestamp exceeds the video duration.
+- [x] **Configurable transcode FPS.** Let callers set a target frame rate for HLS
+  transcoding, with validation and FFmpeg argument generation covered by tests.
+- [x] **Configurable FFmpeg encoding preset.** Let callers choose the encoder
+  preset (for example `ultrafast`, `fast`, `medium`, `slow`), validate supported
+  values, and pass it to FFmpeg during transcoding.
+
+---
+
 ## Roadmap / stretch 🟢
 - [ ] **Input-normalization filter chain** (moved from Phase 4.5 — needs real
   source media to validate each filter chain end-to-end):

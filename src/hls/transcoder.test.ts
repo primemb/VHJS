@@ -132,6 +132,21 @@ describe("createTranscoder — real run", () => {
     expect(ffmpeg.lastArgs.join(" ")).toContain("-g 120");
   });
 
+  it("uses a requested FPS for both the frame filter and GOP alignment", async () => {
+    const { deps, ffmpeg } = setup();
+    await createTranscoder(deps).transcodeToHls({
+      input: "in.mp4",
+      outputDir: "out",
+      segmentDuration: 4,
+      frameRate: asFrameRate(24),
+      preset: "slow",
+      renditions: [makeRendition({ height: asPixels(720), videoBitrate: asBitrate(2_800_000) })],
+    });
+    expect(ffmpeg.lastArgs.join(" ")).toContain("fps=24,scale=-2:720");
+    expect(ffmpeg.lastArgs.join(" ")).toContain("-g 96");
+    expect(ffmpeg.lastArgs.join(" ")).toContain("-preset slow");
+  });
+
   it("forwards the abort signal and progress callback to the runner", async () => {
     const events: ProgressEvent[] = [];
     const tick: ProgressEvent = {

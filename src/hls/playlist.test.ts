@@ -8,6 +8,7 @@ import {
   parseAttributeList,
   parseMasterPlaylist,
   parseMediaPlaylist,
+  removeAlternateRendition,
   serializeMasterPlaylist,
   serializeMediaPlaylist,
   sumMediaPlaylistDurationMs,
@@ -363,6 +364,62 @@ describe("addAlternateAudio", () => {
     });
     const audioAttrs = first(twice.variants).attributes.filter(([k]) => k === "AUDIO");
     expect(audioAttrs).toHaveLength(1);
+  });
+});
+
+describe("removeAlternateRendition", () => {
+  it("removes a matching rendition and removes a last-group reference from variants", () => {
+    const withAudio = addAlternateAudio(parseMasterPlaylist(MASTER), {
+      groupId: "audio",
+      name: "English",
+      language: "en",
+      uri: "audio/audio.m3u8",
+      isDefault: false,
+      autoselect: true,
+    });
+    const result = removeAlternateRendition(withAudio, "AUDIO", "audio", "English");
+
+    expect(result.removed).toMatchObject({ uri: "audio/audio.m3u8" });
+    expect(result.playlist.media).toHaveLength(0);
+    expect(getAttribute(first(result.playlist.variants).attributes, "AUDIO")).toBeUndefined();
+  });
+
+  it("retains a group reference while other group members still exist", () => {
+    const english = addAlternateSubtitle(parseMasterPlaylist(MASTER), {
+      groupId: "subs",
+      name: "English",
+      language: "en",
+      uri: "en/subtitles.m3u8",
+      isDefault: false,
+      autoselect: true,
+      forced: false,
+    });
+    const both = addAlternateSubtitle(english, {
+      groupId: "subs",
+      name: "Deutsch",
+      language: "de",
+      uri: "de/subtitles.m3u8",
+      isDefault: false,
+      autoselect: true,
+      forced: false,
+    });
+    const result = removeAlternateRendition(both, "SUBTITLES", "subs", "English");
+
+    expect(result.playlist.media).toHaveLength(1);
+    expect(
+      unquote(getAttribute(first(result.playlist.variants).attributes, "SUBTITLES") ?? ""),
+    ).toBe("subs");
+  });
+
+  it("returns null when no rendition matches", () => {
+    const result = removeAlternateRendition(
+      parseMasterPlaylist(MASTER),
+      "AUDIO",
+      "audio",
+      "Missing",
+    );
+    expect(result.removed).toBeNull();
+    expect(result.playlist).toEqual(parseMasterPlaylist(MASTER));
   });
 });
 

@@ -6,6 +6,8 @@
  * This module deliberately depends only on other public types. Validation owns
  * the policy's behaviour, but its shape belongs here because it is user input.
  */
+import type { FrameRate } from "./brands.js";
+import type { FfmpegPreset } from "./encoding.js";
 import type { ProgressEvent } from "./progress.js";
 import type { Rendition } from "./rendition.js";
 
@@ -19,7 +21,7 @@ export interface BitratePolicy {
 export const DEFAULT_HLS_JOB_OPTIONS = {
   segmentDuration: 6,
   masterPlaylistName: "master.m3u8",
-  preset: "veryfast",
+  preset: "veryfast" satisfies FfmpegPreset,
 } as const;
 
 /** A ladder derived from the probed source. This is the default strategy. */
@@ -42,7 +44,10 @@ export interface HlsJobOptions {
   readonly outputDir: string;
   readonly segmentDuration?: number;
   readonly masterPlaylistName?: string;
-  readonly preset?: string;
+  /** libx264 speed/compression preset (default `veryfast`). */
+  readonly preset?: FfmpegPreset;
+  /** Target constant frame rate for every HLS rendition. Defaults to the source rate. */
+  readonly frameRate?: FrameRate;
   readonly bitratePolicy?: BitratePolicy;
   readonly inputArgs?: readonly string[];
   readonly outputArgs?: readonly string[];
