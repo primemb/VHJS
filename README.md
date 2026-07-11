@@ -208,6 +208,14 @@ pnpm docs        # generated reference in docs/api/
 Releases follow Semantic Versioning. See [CHANGELOG.md](CHANGELOG.md) for
 published changes and upgrade notes.
 
+### Automated npm publishing
+
+After the initial manual publication, npm trusted publishing releases a new
+version automatically when a version-changing commit reaches `main`; the full
+cross-platform check and FFmpeg E2E job must pass first. Configure npm's trusted
+publisher for GitHub repository `primemb/VHJS`, workflow file `ci.yml`, and the
+`npm publish` permission. No npm token is stored in GitHub.
+
 ## License
 
 [MIT](LICENSE)

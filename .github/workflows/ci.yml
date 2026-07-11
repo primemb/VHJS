@@ -56,3 +56,46 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - run: pnpm test:e2e
+
+  publish:
+    name: Publish npm package
+    # A release is created only by a version-changing commit on main, after every
+    # cross-platform check and the real-FFmpeg E2E suite have passed.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [check, e2e]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          registry-url: https://registry.npmjs.org
+      - run: pnpm install --frozen-lockfile
+      - name: Detect a version change
+        id: release
+        shell: bash
+        run: |
+          current_version="$(node -p "JSON.parse(require('node:fs').readFileSync('package.json', 'utf8')).version")"
+          previous_version="$(git show HEAD^:package.json | node -p "JSON.parse(require('node:fs').readFileSync(0, 'utf8')).version")"
+          if [[ "$current_version" == "$previous_version" ]]; then
+            echo "should_publish=false" >> "$GITHUB_OUTPUT"
+            echo "Version unchanged ($current_version); publication skipped."
+          else
+            echo "should_publish=true" >> "$GITHUB_OUTPUT"
+            echo "Publishing $previous_version -> $current_version."
+          fi
+      - name: Publish changed version
+        if: steps.release.outputs.should_publish == 'true'
+        run: pnpm publish --access public
+        env:
+          # pnpm is the required project package manager; this asks npm to emit
+          # provenance when the trusted-publisher OIDC exchange succeeds.
+          NPM_CONFIG_PROVENANCE: "true"
