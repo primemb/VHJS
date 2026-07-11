@@ -46,6 +46,10 @@ jobs:
           cache: pnpm
       - name: Install FFmpeg
         uses: FedericoCarboni/setup-ffmpeg@v3
+        with:
+          # Pin the binary: the action's moving "release" lookup at
+          # johnvansickle.com is not reliably available from GitHub Actions.
+          ffmpeg-version: "7.0.2"
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - run: pnpm test:e2e
