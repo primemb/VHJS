@@ -57,8 +57,8 @@ describe("buildHlsFilterGraph", () => {
       normalizeWatermark({ input: "logo.png", relativeWidth: 0.25, position: "top-left" }),
     );
     expect(graph).toContain("[1:v]split=2[wm0][wm1]");
-    expect(graph).toContain("[v0]fps=24,scale=-2:720,split=2[base0][ref0]");
-    expect(graph).toContain("[wm1][ref1]scale=w=rw*0.25:h=ow/dar[scaledwm1]");
+    expect(graph).toContain("[v0]fps=24,scale=-2:720[base0]");
+    expect(graph).toContain("[wm1][base1]scale2ref=w=iw*0.25:h=-1[scaledwm1][scaledbase1]");
     expect(graph).toContain(
       "overlay=x=min(main_w\\,main_h)*0.03:y=min(main_w\\,main_h)*0.03:shortest=1[vout0]",
     );

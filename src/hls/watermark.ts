@@ -39,9 +39,9 @@ function buildWatermarkedFilterGraph(
   const fps = frameRate === undefined ? "" : `fps=${frameRate},`;
   const { x, y } = watermarkCoordinates(watermark);
   const branches = renditions.flatMap((rendition, index) => [
-    `[v${index}]${fps}scale=-2:${rendition.height},split=2[base${index}][ref${index}]`,
-    `[wm${index}][ref${index}]scale=w=rw*${watermark.relativeWidth}:h=ow/dar[scaledwm${index}]`,
-    `[base${index}][scaledwm${index}]overlay=x=${x}:y=${y}:shortest=1[vout${index}]`,
+    `[v${index}]${fps}scale=-2:${rendition.height}[base${index}]`,
+    `[wm${index}][base${index}]scale2ref=w=iw*${watermark.relativeWidth}:h=-1[scaledwm${index}][scaledbase${index}]`,
+    `[scaledbase${index}][scaledwm${index}]overlay=x=${x}:y=${y}:shortest=1[vout${index}]`,
   ]);
   return [
     `[0:v]split=${renditions.length}${sourceLabels}`,

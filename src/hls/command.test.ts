@@ -143,7 +143,7 @@ describe("buildHlsCommand", () => {
     ]);
     const graph = args[args.indexOf("-filter_complex") + 1] ?? "";
     expect(graph).toContain("[1:v]split=2[wm0][wm1]");
-    expect(graph).toContain("scale=w=rw*0.2:h=ow/dar");
+    expect(graph).toContain("scale2ref=w=iw*0.2:h=-1");
     expect(graph).toContain("overlay=x=");
     expect(graph).toContain("shortest=1[vout1]");
   });
