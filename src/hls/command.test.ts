@@ -126,6 +126,41 @@ describe("buildHlsCommand", () => {
     expect(args.join(" ")).not.toContain("transpose");
   });
 
+  it("adds a looping image input and a per-rendition watermark graph", () => {
+    const { args } = buildHlsCommand({
+      input: "in.mp4",
+      outputDir: "out",
+      renditions: ladder,
+      watermark: { input: "assets/logo.png", position: "top-right", relativeWidth: 0.2 },
+    });
+    expect(args.slice(args.indexOf("-i"), args.indexOf("-filter_complex"))).toEqual([
+      "-i",
+      "in.mp4",
+      "-loop",
+      "1",
+      "-i",
+      "assets/logo.png",
+    ]);
+    const graph = args[args.indexOf("-filter_complex") + 1] ?? "";
+    expect(graph).toContain("[1:v]split=2[wm0][wm1]");
+    expect(graph).toContain("scale=w=rw*0.2:h=ow/dar");
+    expect(graph).toContain("overlay=x=");
+    expect(graph).toContain("shortest=1[vout1]");
+  });
+
+  it("renders text watermarks with drawtext and no additional FFmpeg input", () => {
+    const { args } = buildHlsCommand({
+      input: "in.mp4",
+      outputDir: "out",
+      renditions: ladder,
+      watermark: { type: "text", text: "Confidential", color: "red" },
+    });
+    expect(args.filter((arg) => arg === "-i")).toHaveLength(1);
+    const graph = args[args.indexOf("-filter_complex") + 1] ?? "";
+    expect(graph).toContain("drawtext=text='Confidential'");
+    expect(graph).toContain("fontcolor=red");
+  });
+
   describe("custom args", () => {
     it("injects inputArgs before -i and outputArgs before the HLS muxer", () => {
       const { args } = buildHlsCommand({

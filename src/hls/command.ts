@@ -34,8 +34,11 @@
 import { DEFAULT_HLS_JOB_OPTIONS } from "../types/config.js";
 import type { FfmpegPreset } from "../types/encoding.js";
 import { type Rendition, renditionName } from "../types/rendition.js";
+import type { WatermarkConfig } from "../types/watermark.js";
 import { ConflictingFfmpegArgError } from "../validation/errors.js";
 import { assertSupportedFfmpegPreset, assertValidFrameRate } from "../validation/rules.js";
+import { isTextWatermark, normalizeWatermark } from "../validation/watermark.js";
+import { buildHlsFilterGraph } from "./watermark.js";
 
 /** HLS build defaults (overridable per job). */
 export const DEFAULT_SEGMENT_DURATION_SEC = DEFAULT_HLS_JOB_OPTIONS.segmentDuration;
@@ -81,6 +84,8 @@ export interface HlsBuildOptions {
    * throws `ConflictingFfmpegArgError`.
    */
   readonly outputArgs?: readonly string[];
+  /** Optional image or text watermark composited into every scaled rendition. */
+  readonly watermark?: WatermarkConfig;
 }
 
 /**
@@ -160,7 +165,7 @@ function toPosix(path: string): string {
 }
 
 /**
- * Build the `-filter_complex` graph that splits the source and scales each rung.
+ * Rotation note for the delegated `-filter_complex` graph.
  *
  * Rotation note: we do **not** add an explicit `transpose`. Modern ffmpeg
  * (verified on 8.1.2) applies the source's display-matrix rotation at decode
@@ -172,14 +177,6 @@ function toPosix(path: string): string {
  * (H.264 requires even dimensions). Adding our own transpose would double-rotate
  * and ship sideways video.
  */
-function buildFilterGraph(renditions: readonly Rendition[], frameRate: number | undefined): string {
-  const labels = renditions.map((_, i) => `[v${i}]`).join("");
-  const split = `[0:v]split=${renditions.length}${labels}`;
-  const fps = frameRate === undefined ? "" : `fps=${frameRate},`;
-  const scales = renditions.map((r, i) => `[v${i}]${fps}scale=-2:${r.height}[vout${i}]`);
-  return [split, ...scales].join(";");
-}
-
 /**
  * Build the full HLS ffmpeg command and the output paths it will create. Pure:
  * no filesystem access, no spawning — the returned `args` are exactly what is
@@ -197,6 +194,7 @@ export function buildHlsCommand(options: HlsBuildOptions): HlsCommand {
     includeAudio = true,
     inputArgs = [],
     outputArgs = [],
+    watermark: requestedWatermark,
   } = options;
 
   if (renditions.length === 0) {
@@ -206,6 +204,8 @@ export function buildHlsCommand(options: HlsBuildOptions): HlsCommand {
   if (frameRate !== undefined) {
     assertValidFrameRate(frameRate);
   }
+  const watermark =
+    requestedWatermark === undefined ? undefined : normalizeWatermark(requestedWatermark);
 
   // Custom args are additive only — they must not fight the flags VHJS owns.
   assertNoReservedArgs(inputArgs);
@@ -254,8 +254,11 @@ export function buildHlsCommand(options: HlsBuildOptions): HlsCommand {
     ...inputArgs,
     "-i",
     input,
+    ...(watermark === undefined || isTextWatermark(watermark)
+      ? []
+      : ["-loop", "1", "-i", watermark.input]),
     "-filter_complex",
-    buildFilterGraph(renditions, frameRate),
+    buildHlsFilterGraph(renditions, frameRate, watermark),
     ...videoMaps,
     ...audioMaps,
     ...videoCodecArgs,

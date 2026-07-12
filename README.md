@@ -80,7 +80,7 @@ argument.
 `HlsJobConfig` takes `input`, `outputDir`, and either an automatic or explicit
 ladder. Common optional fields are `segmentDuration`, `masterPlaylistName`,
 `preset`, `frameRate`, `bitratePolicy`, `inputArgs`, `outputArgs`, `signal`,
-`onProgress`, and `dryRun`.
+`onProgress`, `watermark`, and `dryRun`.
 
 ```ts
 import { asFrameRate, createVhjs } from "@primemb/vhjs";
@@ -100,6 +100,56 @@ await video.transcodeToHls({
 `inputArgs` and `outputArgs` are additive only. VHJS rejects arguments that
 conflict with flags it manages, such as mappings, codecs, rate control, preset,
 and HLS muxer settings.
+
+### Image and text watermarks
+
+Pass an image FFmpeg can decode (PNG, WebP, and JPEG are common) through
+`watermark`. Transparency in the source image is preserved. Static watermarks
+support all nine edge/center presets or normalized custom coordinates. They are
+scaled independently for every rendition, so `relativeWidth` and `margin` stay
+proportionate across an ABR ladder.
+
+```ts
+await video.transcodeToHls({
+  input: "input.mp4",
+  outputDir: "hls",
+  watermark: {
+    input: "assets/logo.png",
+    position: "bottom-right", // top-left, top, top-right, left, center, ...
+    relativeWidth: 0.15,
+    margin: 0.03,
+  },
+});
+
+await video.transcodeToHls({
+  input: "input.mp4",
+  outputDir: "hls-animated",
+  watermark: { input: "assets/logo.png", motion: "bounce", speed: 0.1 },
+});
+
+await video.transcodeToHls({
+  input: "input.mp4",
+  outputDir: "hls-text",
+  watermark: {
+    type: "text",
+    text: "© Example Studio",
+    color: "white",
+    position: "bottom-right",
+    relativeFontSize: 0.05,
+  },
+});
+```
+
+Omit `motion` for the static default; its default position is `bottom-right`.
+For a custom static position, use `position: { x: 0.25, y: 0.75 }`, where each
+value is normalized within the usable area after margins. A bouncing watermark
+travels diagonally from one corner to the opposite corner and back; `speed` is
+the number of complete cycles per second.
+
+Text watermarks use FFmpeg's `drawtext` filter. Set `fontFile` to a readable
+`.ttf` or `.otf` file when a specific typeface is required; otherwise FFmpeg's
+configured default font is used. Text is treated literally, so it cannot expand
+FFmpeg expressions.
 
 ### Progress and cancellation
 
@@ -160,7 +210,7 @@ running FFmpeg. Use the corresponding `isDryRun`, `isAudioDryRun`,
 
 | Group | Exports |
 | --- | --- |
-| Job configuration | `HlsJobConfig`, `HlsJobOptions`, `HlsLadderConfig`, `BitratePolicy`, `TranscodeRequest`, `FfmpegPreset`, `FFMPEG_PRESETS` |
+| Job configuration | `HlsJobConfig`, `HlsJobOptions`, `HlsLadderConfig`, `WatermarkConfig`, `ImageWatermarkConfig`, `TextWatermarkConfig`, `WatermarkPosition`, `WATERMARK_POSITIONS`, `DEFAULT_WATERMARK_OPTIONS`, `BitratePolicy`, `TranscodeRequest`, `FfmpegPreset`, `FFMPEG_PRESETS` |
 | Results and media | `SourceMetadata`, `Rendition`, `TranscodeResult`, `ProgressEvent`, `ValidationWarning`, audio/subtitle/thumbnail/track request and result types |
 | Validated scalars | `asBitrate`, `asFrameRate`, `asMilliseconds`, `asPixels` and their branded types |
 | HLS helpers | `autoLadder`, `normalizeLadder`, `buildHlsCommand`, playlist parse/serialize/patch helpers, and audio/subtitle/thumbnail command builders |
@@ -177,18 +227,22 @@ for `switch` statements. Important error exports include
 `TranscodeError`, `PlaylistParseError`, `NoAudioTrackError`,
 `NoSubtitleTrackError`, `InvalidThumbnailTimestampError`,
 `ThumbnailTimestampExceedsDurationError`, `UnsafePlaylistUriError`, and binary
-resolution errors.
+resolution errors. Watermark requests additionally fail with
+`InvalidWatermarkOptionsError`, `WatermarkFileNotFoundError`, or
+`WatermarkFontFileNotFoundError` before FFmpeg is started.
 
 ## Examples and framework recipes
 
 The runnable examples cover probing, basic HLS, ABR, audio extraction,
 alternate audio, subtitles, progress streaming, dry runs, playlist manipulation,
-and thumbnails. Run them from a clone of this repository:
+thumbnails, and image watermarks. Run them from a clone of this repository:
 
 ```bash
 pnpm install
 pnpm example 01-probe
 pnpm example 08-dry-run
+pnpm example 11-watermark # requires VHJS_WATERMARK_IMAGE=/path/to/logo.png
+pnpm example 12-text-watermark
 ```
 
 See [examples/README.md](examples/README.md) for the full list, media setup, and

@@ -30,7 +30,10 @@ export type VhjsErrorCode =
   | "VIDEO_DURATION_UNAVAILABLE"
   | "ALTERNATE_TRACK_NOT_FOUND"
   | "UNSAFE_PLAYLIST_URI"
-  | "INVALID_THUMBNAIL_TIMESTAMP";
+  | "INVALID_THUMBNAIL_TIMESTAMP"
+  | "INVALID_WATERMARK_OPTIONS"
+  | "WATERMARK_FILE_NOT_FOUND"
+  | "WATERMARK_FONT_FILE_NOT_FOUND";
 
 /** Base class for all VHJS errors. Subclasses set a literal `code`. */
 export abstract class VhjsError extends Error {
@@ -343,5 +346,41 @@ export class UnsafePlaylistUriError extends VhjsError {
     options?: ErrorOptions,
   ) {
     super(`Playlist URI "${uri}" is not a safe relative path within the HLS package.`, options);
+  }
+}
+
+/** A watermark request contains an invalid image path, size, placement, or motion value. */
+export class InvalidWatermarkOptionsError extends VhjsError {
+  readonly code = "INVALID_WATERMARK_OPTIONS" as const;
+
+  constructor(
+    readonly reason: string,
+    options?: ErrorOptions,
+  ) {
+    super(`Invalid watermark options: ${reason}.`, options);
+  }
+}
+
+/** The configured watermark image is not readable at the supplied path. */
+export class WatermarkFileNotFoundError extends VhjsError {
+  readonly code = "WATERMARK_FILE_NOT_FOUND" as const;
+
+  constructor(
+    readonly input: string,
+    options?: ErrorOptions,
+  ) {
+    super(`Watermark image not found: "${input}".`, options);
+  }
+}
+
+/** A configured text-watermark font file is not readable at the supplied path. */
+export class WatermarkFontFileNotFoundError extends VhjsError {
+  readonly code = "WATERMARK_FONT_FILE_NOT_FOUND" as const;
+
+  constructor(
+    readonly input: string,
+    options?: ErrorOptions,
+  ) {
+    super(`Watermark font file not found: "${input}".`, options);
   }
 }

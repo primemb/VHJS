@@ -55,6 +55,7 @@ describe("createHlsJobBuilder", () => {
       .bitratePolicy({ hardExceedFactor: 2 })
       .inputArgs("-hwaccel", "cuda")
       .outputArgs("-tune", "film")
+      .watermark({ input: "logo.png", position: "bottom-right" })
       .dryRun()
       .signal(signal)
       .onProgress(onProgress)
@@ -72,6 +73,7 @@ describe("createHlsJobBuilder", () => {
         bitratePolicy: { hardExceedFactor: 2 },
         inputArgs: ["-hwaccel", "cuda"],
         outputArgs: ["-tune", "film"],
+        watermark: { input: "logo.png", position: "bottom-right" },
         dryRun: true,
         signal,
         onProgress,

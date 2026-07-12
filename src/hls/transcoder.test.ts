@@ -9,7 +9,12 @@ import { makeRendition } from "../../tests/fixtures/rendition.js";
 import type { Clock } from "../ports/index.js";
 import { asBitrate, asFrameRate, asMilliseconds, asPixels } from "../types/brands.js";
 import type { ProgressEvent } from "../types/progress.js";
-import { ProbeError, ResolutionUpscaleError } from "../validation/errors.js";
+import {
+  ProbeError,
+  ResolutionUpscaleError,
+  WatermarkFileNotFoundError,
+  WatermarkFontFileNotFoundError,
+} from "../validation/errors.js";
 import { createTranscoder, isDryRun, type TranscoderDeps } from "./transcoder.js";
 
 /** Build a transcoder over fakes, with the input file pre-seeded to exist. */
@@ -226,6 +231,43 @@ describe("createTranscoder — real run", () => {
     expect(joined).toContain("-tune film");
   });
 
+  it("validates an existing watermark and threads it into the command", async () => {
+    const { deps, fs, ffmpeg } = setup();
+    fs.files.set("logo.png", "image");
+    await createTranscoder(deps).transcodeToHls({
+      input: "in.mp4",
+      outputDir: "out",
+      renditions: [makeRendition({ height: asPixels(720), videoBitrate: asBitrate(2_800_000) })],
+      watermark: { input: "logo.png", position: "top-left" },
+    });
+    expect(ffmpeg.lastArgs.join(" ")).toContain("-loop 1 -i logo.png");
+  });
+
+  it("checks watermark assets even for dry runs without writing or invoking ffmpeg", async () => {
+    const { deps, fs, ffmpeg } = setup();
+    fs.files.set("logo.png", "image");
+    const result = await createTranscoder(deps).transcodeToHls({
+      input: "in.mp4",
+      outputDir: "out",
+      watermark: { input: "logo.png", motion: "bounce" },
+      dryRun: true,
+    });
+    if (!isDryRun(result)) throw new Error("expected dry run");
+    expect(result.args).toContain("logo.png");
+    expect(fs.dirs.size).toBe(0);
+    expect(ffmpeg.calls).toHaveLength(0);
+  });
+
+  it("runs text watermarks without requiring an image asset", async () => {
+    const { deps, ffmpeg } = setup();
+    await createTranscoder(deps).transcodeToHls({
+      input: "in.mp4",
+      outputDir: "out",
+      watermark: { type: "text", text: "VHJS", position: "center" },
+    });
+    expect(ffmpeg.lastArgs.join(" ")).toContain("drawtext=text='VHJS'");
+  });
+
   it("rejects (before running ffmpeg) custom args that collide with managed flags", async () => {
     const ffmpeg = new FakeFfmpegRunner();
     const { deps } = setup({ ffmpeg });
@@ -258,6 +300,32 @@ describe("createTranscoder — failures", () => {
     await expect(
       createTranscoder(deps).transcodeToHls({ input: "in.mp4", outputDir: "out" }),
     ).rejects.toBeInstanceOf(ProbeError);
+  });
+
+  it("throws a typed error before FFmpeg when the watermark image is missing", async () => {
+    const ffmpeg = new FakeFfmpegRunner();
+    const { deps } = setup({ ffmpeg });
+    await expect(
+      createTranscoder(deps).transcodeToHls({
+        input: "in.mp4",
+        outputDir: "out",
+        watermark: { input: "missing.png" },
+      }),
+    ).rejects.toBeInstanceOf(WatermarkFileNotFoundError);
+    expect(ffmpeg.calls).toHaveLength(0);
+  });
+
+  it("throws a typed error before FFmpeg when a text font file is missing", async () => {
+    const ffmpeg = new FakeFfmpegRunner();
+    const { deps } = setup({ ffmpeg });
+    await expect(
+      createTranscoder(deps).transcodeToHls({
+        input: "in.mp4",
+        outputDir: "out",
+        watermark: { type: "text", text: "VHJS", fontFile: "missing.ttf" },
+      }),
+    ).rejects.toBeInstanceOf(WatermarkFontFileNotFoundError);
+    expect(ffmpeg.calls).toHaveLength(0);
   });
 
   it("throws TranscodeError when ffmpeg exits non-zero", async () => {

@@ -11,7 +11,7 @@ belongs in [README.md](README.md) and [examples/README.md](examples/README.md).
 ## Release status
 
 The implementation, examples, API docs configuration, and CI smoke checks are
-ready for `0.1.0`. The remaining release action is an authorized `npm publish`.
+ready for `0.2.0`. The remaining release action is an authorized `npm publish`.
 Do not publish or change the package version without explicit maintainer approval.
 
 ## Toolchain and commands

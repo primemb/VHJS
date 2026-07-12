@@ -28,6 +28,8 @@ examples/
   08-dry-run.ts            # print the FFmpeg argv without executing
   09-playlist-manipulation.ts # parse/inspect/serialize media playlist metadata
   10-thumbnail.ts          # extract a validated single-frame JPEG thumbnail
+  11-watermark.ts          # transcode HLS with a static image watermark
+  12-text-watermark.ts     # transcode HLS with a simple text watermark
   frameworks/
     README.md              # setup, security, and integration notes
     express/               # REST API + SSE progress + static HLS server
@@ -48,6 +50,8 @@ pnpm example 07-progress-events   # EventEmitter + AsyncIterable progress
 pnpm example 08-dry-run           # print the ffmpeg argv without running it
 pnpm example 09-playlist-manipulation # parse and reserialize a media playlist (no FFmpeg needed)
 pnpm example 10-thumbnail             # generate a JPEG at a source timestamp
+pnpm example 11-watermark             # requires VHJS_WATERMARK_IMAGE=/path/to/logo.png
+pnpm example 12-text-watermark         # text watermark using FFmpeg drawtext
 pnpm example 04-extract-audio     # demux audio to a file (copy + aac modes)
 pnpm example 05-add-audio-track   # add an alternate-audio track to a package
 pnpm example 06-add-subtitles     # add WebVTT/SRT subtitles to a package
@@ -151,6 +155,18 @@ await client.removeSubtitleTrack({ packageDir: "out", groupId: "subs", name: "En
 Soft removal patches only the master playlist. Hard removal also deletes the
 generated rendition directory; VHJS rejects playlist URIs that could leave the
 HLS package before deleting anything.
+
+## Image and text watermarks
+
+`11-watermark` applies a PNG, WebP, or JPEG to every HLS rendition. Set
+`VHJS_WATERMARK_IMAGE` to the source image first; transparent PNG logos keep
+their alpha channel. The example uses the `bottom-right` preset. Production jobs
+can also use the other edge/center presets, normalized custom coordinates, or
+`motion: "bounce"` to move diagonally around the visible frame.
+
+`12-text-watermark` uses the same placement and motion API with
+`watermark: { type: "text", text: "..." }`. It uses FFmpeg's configured default
+font; pass `fontFile` for a specific `.ttf` or `.otf` typeface.
 
 ## Rules for example code
 

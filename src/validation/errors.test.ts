@@ -7,6 +7,7 @@ import {
   FfprobeNotFoundError,
   InvalidFrameRateError,
   InvalidThumbnailTimestampError,
+  InvalidWatermarkOptionsError,
   NoSubtitleTrackError,
   PlaylistParseError,
   ProbeError,
@@ -18,6 +19,8 @@ import {
   UnsupportedFfmpegPresetError,
   VhjsError,
   VideoDurationUnavailableError,
+  WatermarkFileNotFoundError,
+  WatermarkFontFileNotFoundError,
 } from "./errors.js";
 
 describe("FfmpegNotFoundError", () => {
@@ -192,5 +195,20 @@ describe("new feature errors", () => {
       trackName: "English",
     });
     expect(new UnsafePlaylistUriError("../audio.m3u8").code).toBe("UNSAFE_PLAYLIST_URI");
+  });
+
+  it("carries precise codes and context for watermark validation", () => {
+    expect(new InvalidWatermarkOptionsError("margin is invalid")).toMatchObject({
+      code: "INVALID_WATERMARK_OPTIONS",
+      reason: "margin is invalid",
+    });
+    expect(new WatermarkFileNotFoundError("logo.png")).toMatchObject({
+      code: "WATERMARK_FILE_NOT_FOUND",
+      input: "logo.png",
+    });
+    expect(new WatermarkFontFileNotFoundError("font.ttf")).toMatchObject({
+      code: "WATERMARK_FONT_FILE_NOT_FOUND",
+      input: "font.ttf",
+    });
   });
 });

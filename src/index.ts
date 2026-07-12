@@ -6,7 +6,7 @@
  * hierarchy, source-metadata / progress / rendition types, the branded scalars,
  * and the pure ladder/command helpers for callers who want to build a job by hand.
  */
-export const VHJS_VERSION = "0.1.0";
+export const VHJS_VERSION = "0.2.0";
 
 // --- Fluent builder + streaming job ---
 export {
@@ -176,6 +176,18 @@ export type {
   RemoveSubtitleTrackRequest,
 } from "./types/tracks.js";
 export type { ValidationWarning, ValidationWarningCode } from "./types/warnings.js";
+export {
+  type BouncingTextWatermarkConfig,
+  type BouncingWatermarkConfig,
+  type CustomWatermarkPosition,
+  type ImageWatermarkConfig,
+  type StaticTextWatermarkConfig,
+  type StaticWatermarkConfig,
+  type TextWatermarkConfig,
+  WATERMARK_POSITIONS,
+  type WatermarkConfig,
+  type WatermarkPosition,
+} from "./types/watermark.js";
 // --- Errors ---
 export type { VhjsErrorCode } from "./validation/errors.js";
 export {
@@ -186,6 +198,7 @@ export {
   FfprobeNotFoundError,
   InvalidFrameRateError,
   InvalidThumbnailTimestampError,
+  InvalidWatermarkOptionsError,
   NoAudioTrackError,
   NoSubtitleTrackError,
   PlaylistParseError,
@@ -198,6 +211,8 @@ export {
   UnsupportedFfmpegPresetError,
   VhjsError,
   VideoDurationUnavailableError,
+  WatermarkFileNotFoundError,
+  WatermarkFontFileNotFoundError,
 } from "./validation/errors.js";
 // --- Validation ---
 export {
@@ -209,3 +224,4 @@ export {
   DEFAULT_BITRATE_POLICY,
   validateRendition,
 } from "./validation/rules.js";
+export { DEFAULT_WATERMARK_OPTIONS } from "./validation/watermark.js";

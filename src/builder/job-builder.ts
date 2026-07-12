@@ -9,6 +9,7 @@ import type { BitratePolicy, HlsJobConfig, TranscodeRequest } from "../types/con
 import type { FfmpegPreset } from "../types/encoding.js";
 import type { ProgressEvent } from "../types/progress.js";
 import type { Rendition } from "../types/rendition.js";
+import type { WatermarkConfig } from "../types/watermark.js";
 import type { TranscodeJob } from "./transcode-job.js";
 
 /** The small client surface the builder needs; `Vhjs` and test doubles fit it. */
@@ -32,6 +33,8 @@ export interface HlsJobBuilder {
   bitratePolicy(policy: BitratePolicy): HlsJobBuilder;
   inputArgs(...args: string[]): HlsJobBuilder;
   outputArgs(...args: string[]): HlsJobBuilder;
+  /** Add an image or text watermark to every output rendition. */
+  watermark(config: WatermarkConfig): HlsJobBuilder;
   dryRun(enabled?: boolean): HlsJobBuilder;
   signal(signal: AbortSignal): HlsJobBuilder;
   onProgress(listener: (event: ProgressEvent) => void): HlsJobBuilder;
@@ -52,6 +55,7 @@ interface HlsJobDraft {
   readonly bitratePolicy?: BitratePolicy;
   readonly inputArgs?: readonly string[];
   readonly outputArgs?: readonly string[];
+  readonly watermark?: WatermarkConfig;
   readonly dryRun?: boolean;
   readonly signal?: AbortSignal;
   readonly onProgress?: (event: ProgressEvent) => void;
@@ -78,6 +82,7 @@ function createConfiguredBuilder(draft: HlsJobDraft, client: HlsJobClient): HlsJ
     bitratePolicy: (bitratePolicy) => next({ bitratePolicy }),
     inputArgs: (...inputArgs) => next({ inputArgs }),
     outputArgs: (...outputArgs) => next({ outputArgs }),
+    watermark: (watermark) => next({ watermark }),
     dryRun: (enabled = true) => next({ dryRun: enabled }),
     signal: (signal) => next({ signal }),
     onProgress: (onProgress) => next({ onProgress }),
@@ -100,6 +105,7 @@ function toConfig(draft: HlsJobDraft): HlsJobConfig {
     ...(draft.bitratePolicy === undefined ? {} : { bitratePolicy: draft.bitratePolicy }),
     ...(draft.inputArgs === undefined ? {} : { inputArgs: draft.inputArgs }),
     ...(draft.outputArgs === undefined ? {} : { outputArgs: draft.outputArgs }),
+    ...(draft.watermark === undefined ? {} : { watermark: draft.watermark }),
     ...(draft.dryRun === undefined ? {} : { dryRun: draft.dryRun }),
     ...(draft.signal === undefined ? {} : { signal: draft.signal }),
     ...(draft.onProgress === undefined ? {} : { onProgress: draft.onProgress }),

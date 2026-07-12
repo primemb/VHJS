@@ -166,11 +166,15 @@ A task is not done until all of these hold — no exceptions:
 - [x] Flesh out `examples/` runnable scripts (see `examples/README.md` for the planned set: probe, basic HLS, ABR ladder, extract audio, add audio track, add subtitles, progress+cancel, dry-run) + framework recipes.
 - [x] Smoke-run examples in CI where feasible so they can't silently rot.
 - [x] Semantic versioning + `CHANGELOG.md`; publish config; `exports` map for ESM.
-- [ ] Publish `0.1.0` once Phases 1–4 are green (release-ready; requires npm publish authority).
+- [ ] Publish `0.2.0` once Phases 1–4 are green (release-ready; requires npm publish authority).
 
 ---
 
 ## Next feature work ✅
+- [x] **Image and text watermarks during HLS transcoding.** Accept
+  FFmpeg-decodable images with alpha or literal text, static presets/custom
+  normalized placement, proportional sizing, and optional diagonal bounce
+  animation.
 - [x] **Remove an alternate audio track from an HLS package.** Support both:
   - [x] **Soft removal:** remove the track's `EXT-X-MEDIA` entry and its variant
     references from the master playlist, while retaining the generated audio

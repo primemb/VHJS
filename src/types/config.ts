@@ -10,6 +10,7 @@ import type { FrameRate } from "./brands.js";
 import type { FfmpegPreset } from "./encoding.js";
 import type { ProgressEvent } from "./progress.js";
 import type { Rendition } from "./rendition.js";
+import type { WatermarkConfig } from "./watermark.js";
 
 /** Tunable thresholds for the source-bitrate validation policy. */
 export interface BitratePolicy {
@@ -51,6 +52,8 @@ export interface HlsJobOptions {
   readonly bitratePolicy?: BitratePolicy;
   readonly inputArgs?: readonly string[];
   readonly outputArgs?: readonly string[];
+  /** Optional image or text watermark composited into every HLS rendition. */
+  readonly watermark?: WatermarkConfig;
   readonly dryRun?: boolean;
   readonly signal?: AbortSignal;
   readonly onProgress?: (event: ProgressEvent) => void;

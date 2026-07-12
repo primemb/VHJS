@@ -18,7 +18,13 @@ import type { TranscodeRequest } from "../types/config.js";
 import type { SourceMetadata } from "../types/metadata.js";
 import type { Rendition, RenditionOutput, TranscodeResult } from "../types/rendition.js";
 import type { ValidationWarning } from "../types/warnings.js";
-import { ProbeError, TranscodeError } from "../validation/errors.js";
+import {
+  ProbeError,
+  TranscodeError,
+  WatermarkFileNotFoundError,
+  WatermarkFontFileNotFoundError,
+} from "../validation/errors.js";
+import { isTextWatermark, normalizeWatermark } from "../validation/watermark.js";
 import { buildHlsCommand, DEFAULT_SEGMENT_DURATION_SEC, type HlsBuildOptions } from "./command.js";
 import { autoLadder, normalizeLadder } from "./ladder.js";
 
@@ -65,6 +71,19 @@ export function createTranscoder(deps: TranscoderDeps): Transcoder {
 
       // 2. Probe the source.
       const source = await deps.probe.probe(request.input, request.signal);
+
+      // Validate watermark input before FFmpeg runs. This applies to dry runs
+      // too, just like the source-input preflight above.
+      if (request.watermark !== undefined) {
+        const watermark = normalizeWatermark(request.watermark);
+        if (isTextWatermark(watermark)) {
+          if (watermark.fontFile !== undefined && !(await deps.fs.exists(watermark.fontFile))) {
+            throw new WatermarkFontFileNotFoundError(watermark.fontFile);
+          }
+        } else if (!(await deps.fs.exists(watermark.input))) {
+          throw new WatermarkFileNotFoundError(watermark.input);
+        }
+      }
 
       // 3. Validate + normalize the ladder (throws typed errors on hard failures).
       const requested = requestedLadder(request, source);
@@ -174,5 +193,6 @@ function buildOptions(
     ...(gopSize !== undefined ? { gopSize } : {}),
     ...(request.inputArgs ? { inputArgs: request.inputArgs } : {}),
     ...(request.outputArgs ? { outputArgs: request.outputArgs } : {}),
+    ...(request.watermark ? { watermark: request.watermark } : {}),
   };
 }

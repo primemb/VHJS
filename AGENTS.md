@@ -10,6 +10,13 @@ engineering rules. This file defines the working contract for agents.
   of truth.
 - Preserve unrelated working-tree changes.
 
+## Local runtime
+
+- Node.js is managed through FNM. Before running `pnpm`, initialize FNM in the
+  current shell so it activates the version from `.nvmrc`:
+  - PowerShell: `fnm env --use-on-cd --shell powershell | Out-String | Invoke-Expression`
+  - Git Bash: `eval "$(fnm env --use-on-cd --shell bash)"`
+
 ## Implementation rules
 
 - Keep dependency direction inward: `hls/`, `validation/`, and `types/` never
