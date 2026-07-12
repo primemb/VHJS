@@ -4,6 +4,9 @@
 video into adaptive-bitrate HLS with FFmpeg. It probes first, validates the job
 before FFmpeg starts, and exposes typed results, warnings, errors, and progress.
 
+[GitHub](https://github.com/primemb/VHJS) &middot;
+[npm](https://www.npmjs.com/package/@primemb/vhjs)
+
 ## Requirements
 
 - Node.js 22 or newer.
